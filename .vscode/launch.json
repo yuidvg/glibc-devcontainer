@@ -1,0 +1,45 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug malloc",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/test/malloc_test",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/test",
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "${workspaceFolder}/build:${workspaceFolder}/build/math:${workspaceFolder}/build/elf:${workspaceFolder}/build/dlfcn:${workspaceFolder}/build/nss:${workspaceFolder}/build/nis:${workspaceFolder}/build/rt:${workspaceFolder}/build/resolv:${workspaceFolder}/build/mathvec:${workspaceFolder}/build/support:${workspaceFolder}/build/crypt:${workspaceFolder}/build/nptl"
+                }
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set disassembly flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ],
+            "sourceFileMap": {},
+            "symbolOptions": {
+                "searchPaths": [
+                    "${workspaceFolder}/build",
+                    "${workspaceFolder}/src"
+                ],
+                "cachePath": "${workspaceFolder}/.debug-cache",
+                "moduleFilter": {
+                    "mode": "loadAllButExcluded"
+                }
+            }
+        }
+    ]
+} 

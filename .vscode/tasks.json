@@ -1,0 +1,23 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build malloc_test",
+            "type": "shell",
+            "command": "cd /workspaces/glibc-devcontainer/test && gcc -g3 -O0 malloc_test.c -o malloc_test",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Run malloc_test with custom glibc",
+            "type": "shell",
+            "command": "cd /workspaces/glibc-devcontainer/test && LD_LIBRARY_PATH=/workspaces/glibc-devcontainer/build:/workspaces/glibc-devcontainer/build/math:/workspaces/glibc-devcontainer/build/elf:/workspaces/glibc-devcontainer/build/dlfcn:/workspaces/glibc-devcontainer/build/nss:/workspaces/glibc-devcontainer/build/nis:/workspaces/glibc-devcontainer/build/rt:/workspaces/glibc-devcontainer/build/resolv:/workspaces/glibc-devcontainer/build/mathvec:/workspaces/glibc-devcontainer/build/support:/workspaces/glibc-devcontainer/build/crypt:/workspaces/glibc-devcontainer/build/nptl ./malloc_test",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        }
+    ]
+} 
