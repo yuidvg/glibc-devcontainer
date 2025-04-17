@@ -17,6 +17,7 @@
             ],
             "externalConsole": false,
             "MIMode": "gdb",
+            "preLaunchTask": "Build malloc_test",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
@@ -30,16 +31,6 @@
                 }
             ],
             "sourceFileMap": {},
-            "symbolOptions": {
-                "searchPaths": [
-                    "${workspaceFolder}/build",
-                    "${workspaceFolder}/src"
-                ],
-                "cachePath": "${workspaceFolder}/.debug-cache",
-                "moduleFilter": {
-                    "mode": "loadAllButExcluded"
-                }
-            }
         }
     ]
-} 
+}

@@ -1,0 +1,10 @@
+--- a/src-glibc/o-iterator.mk
++++ b/src-glibc/o-iterator.mk
+@@ -8,3 +8,6 @@
+ o := $(firstword $(object-suffixes-left))
+ object-suffixes-left := $(filter-out $o,$(object-suffixes-left))
+
+-$(o-iterator-doit)
++# Modified to avoid "mv: files are the same" error
++# by replacing mv -f with rm+cp
++$(subst mv -f,rm -f $@; cp -f,$(o-iterator-doit))
