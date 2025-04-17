@@ -1,42 +1,72 @@
-# Makefile for building glibc with debug symbols and testing
+CC = gcc
+CFLAGS = -Wall -Wextra -Werror -g -std=c99 -I./include
+SRC_DIR = src
+TEST_DIR = test
+OBJ_DIR = obj
+BIN_DIR = bin
 
-# Base directory (absolute path to current directory)
+# Targets
+LIB_TARGET = $(BIN_DIR)/libmy_malloc.a
+TEST_TARGET = $(BIN_DIR)/test_my_malloc
+MAIN_TARGET = $(BIN_DIR)/my_malloc_demo
+
+# Source files
+LIB_SRCS = $(SRC_DIR)/my_malloc.c
+TEST_SRCS = $(TEST_DIR)/test_my_malloc.c
+MAIN_SRCS = $(SRC_DIR)/main.c
+
+# Object files
+LIB_OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(LIB_SRCS))
+TEST_OBJS = $(patsubst $(TEST_DIR)/%.c,$(OBJ_DIR)/test_%.o,$(TEST_SRCS))
+MAIN_OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(MAIN_SRCS))
 
 # Directories
-SRCDIR = glibc-2.31/
-BUILDDIR = build-glibc/
-TESTDIR = test/
-
-# Compiler flags
-CFLAGS_FOR_DEBUG = -O1 -g3 -ggdb
-CONFIGURE_FLAGS = --prefix=/workspaces/glibc-devcontainer/glibc-install
-
-# LD_LIBRARY_PATH for running the test program
-export LD_LIBRARY_PATH = $(BUILDDIR):$(BUILDDIR)math:$(BUILDDIR)elf:$(BUILDDIR)dlfcn:$(BUILDDIR)nss:$(BUILDDIR)nis:$(BUILDDIR)rt:$(BUILDDIR)resolv:$(BUILDDIR)mathvec:$(BUILDDIR)support:$(BUILDDIR)crypt:$(BUILDDIR)nptl
+DIRS = $(OBJ_DIR) $(BIN_DIR)
 
 # Default target
-all: configure-glibc build-glibc build-test
+all: $(DIRS) $(LIB_TARGET) $(TEST_TARGET) $(MAIN_TARGET)
 
-# GLIBC
-# Configure glibc
-configure-glibc: clean-glibc
-	mkdir -p $(BUILDDIR)
-	cd $(BUILDDIR) && ../$(SRCDIR)configure $(CONFIGURE_FLAGS) CFLAGS="$(CFLAGS_FOR_DEBUG)"
+# Create directories
+$(OBJ_DIR) $(BIN_DIR):
+	mkdir -p $@
 
-build-glibc: configure-glibc
-	cd $(BUILDDIR) && make -j
+# Compile library source files
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-clean-glibc:
-	rm -rf $(BUILDDIR)*
+# Compile test source files
+$(OBJ_DIR)/test_%.o: $(TEST_DIR)/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-# TEST
-build-test:
-	cd $(TESTDIR) && gcc -g3 -O0 malloc_test.c -o malloc_test
+# Build static library
+$(LIB_TARGET): $(LIB_OBJS)
+	ar rcs $@ $^
 
-clean-test:
-	rm -f $(TESTDIR)malloc_test
+# Build test executable
+$(TEST_TARGET): $(TEST_OBJS) $(LIB_TARGET)
+	$(CC) $(CFLAGS) -o $@ $< -L$(BIN_DIR) -lmy_malloc
 
-# Clean all generated files
-clean: clean-glibc clean-test
+# Build main program
+$(MAIN_TARGET): $(MAIN_OBJS) $(LIB_TARGET)
+	$(CC) $(CFLAGS) -o $@ $< -L$(BIN_DIR) -lmy_malloc
 
-.PHONY: all clean-glibc configure-glibc build-glibc build-test clean-test clean
+# Run main program
+run: $(MAIN_TARGET)
+	./$(MAIN_TARGET)
+
+# Run tests
+test: $(TEST_TARGET)
+	./$(TEST_TARGET)
+
+# Clean build files
+clean:
+	rm -rf $(OBJ_DIR) $(BIN_DIR)
+
+# Clean and rebuild
+rebuild: clean all
+
+# Run Valgrind memory check
+memcheck: $(TEST_TARGET)
+	valgrind --leak-check=full --show-leak-kinds=all ./$(TEST_TARGET)
+
+.PHONY: all clean rebuild test memcheck run

@@ -30,7 +30,11 @@
                     "ignoreFailures": true
                 }
             ],
-            "sourceFileMap": {},
+            "sourceFileMap": {
+                "./malloc/": "/usr/src/glibc/glibc-2.35/",
+                "/build/buildd/glibc-2.35": "/usr/src/glibc/glibc-2.35",
+                "/usr/src/debug/glibc-2.35": "/usr/src/glibc/glibc-2.35"
+            },
         }
     ]
 }

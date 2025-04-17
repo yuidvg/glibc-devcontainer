@@ -21,4 +21,5 @@
 *.map
 *.os
 *.dt
-build/**
+build-glibc/**
+*.tar
