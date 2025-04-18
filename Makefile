@@ -23,10 +23,10 @@ DIR_BUILD = build
 DIR_OBJ = $(DIR_BUILD)/obj
 
 DIR_OBJ_LIB = $(DIR_OBJ)/lib
-OBJS_LIB = $(patsubst $(DIR_LIB)/%.c,$(DIR_OBJ_LIB)/$(DIR_LIB)/%.o,$(SRCS))
+OBJS_LIB = $(patsubst $(DIR_LIB)/%.c,$(DIR_OBJ_LIB)/%.o,$(SRCS))
 
 DIR_OBJ_TEST = $(DIR_OBJ)/test
-OBJS_TEST = $(patsubst $(DIR_TEST)/%.c,$(DIR_OBJ_TEST)/$(DIR_TEST)/%.o,$(TEST_SRCS))
+OBJS_TEST = $(patsubst $(DIR_TEST)/%.c,$(DIR_OBJ_TEST)/%.o,$(TEST_SRCS))
 
 # Bin
 DIR_BIN = $(DIR_BUILD)/bin
@@ -38,28 +38,26 @@ BIN_TEST = $(DIR_BIN)/test.out
 
 
 # Directories
-$(DIR_BUILD) $(DIR_OBJ) $(DIR_BIN):
+$(DIR_BUILD) $(DIR_OBJ) $(DIR_BIN) $(DIR_OBJ_LIB) $(DIR_OBJ_TEST):
 	mkdir -p $@
 
 # Object files
-$(DIR_OBJ_LIB)/%.o: $(DIR_LIB)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(DIR_OBJ_LIB)/%.o: $(DIR_LIB)/%.c | $(DIR_OBJ_LIB)
+	$(CC) $(CFLAGS) -fPIC -c $< -o $@
 
-$(DIR_OBJ_TEST)/%.o: $(DIR_TEST)/%.c
+$(DIR_OBJ_TEST)/%.o: $(DIR_TEST)/%.c | $(DIR_OBJ_TEST)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 
 # Bin
-$(BIN_LIB): $(OBJS_LIB)
+$(BIN_LIB): $(OBJS_LIB) | $(DIR_BIN)
 	$(CC) -shared -o $@ $^
 	ln -sf $(notdir $@) $(BIN_LIB_SYM)
-$(BIN_TEST): $(OBJS_LIB) $(OBJS_TEST) $(BIN_LIB)
-	$(CC) $(CFLAGS) -o $@ $< -L$(DIR_BIN) -lmyMalloc
 
-$(BIN_TEST): $(OBJS_LIB) $(OBJS_TEST) $(BIN_LIB)
-	$(CC) $(CFLAGS) -o $@ $< -L$(DIR_BIN) -lmyMalloc
+$(BIN_TEST): $(OBJS_TEST) $(BIN_LIB) | $(DIR_BIN)
+	$(CC) $(CFLAGS) -o $@ $(OBJS_TEST) -L$(DIR_BIN) -lft_malloc
 
-all: $(DIRS) $(BIN_LIB) $(BIN_TEST) $(MAIN_TARGET)
+all: $(DIR_BUILD) $(DIR_OBJ) $(DIR_BIN) $(DIR_OBJ_LIB) $(DIR_OBJ_TEST) $(BIN_LIB) $(BIN_TEST)
 
 test: $(BIN_TEST)
 	./$(BIN_TEST)
@@ -72,4 +70,4 @@ re: clean all
 leak: $(BIN_TEST)
 	valgrind --leak-check=full --show-leak-kinds=all ./$(BIN_TEST)
 
-.PHONY: all clean rebuild test leak
+.PHONY: all clean re test leak
