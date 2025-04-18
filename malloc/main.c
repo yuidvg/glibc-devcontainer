@@ -1,14 +1,14 @@
+#include <errno.h>
+#include <setjmp.h>
+#include <signal.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <stdint.h>
-#include <errno.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <time.h>
-#include <signal.h>
-#include <setjmp.h>
+#include <unistd.h>
 
 #include "../include/myMalloc.h"
 
@@ -17,47 +17,50 @@
 #ifdef __APPLE__
 #define MAP_ANONYMOUS MAP_ANON
 #else
-#define MAP_ANONYMOUS 0x20  /* Value on Linux systems */
+#define MAP_ANONYMOUS 0x20 /* Value on Linux systems */
 #endif
 #endif
 
 /* Constants for memory allocation categories */
-#define TINY_MAX_SIZE 128        /* n: max size for tiny allocations */
-#define SMALL_MAX_SIZE 1024      /* m: max size for small allocations */
+#define TINY_MAX_SIZE 128   /* n: max size for tiny allocations */
+#define SMALL_MAX_SIZE 1024 /* m: max size for small allocations */
 
 /* Size of allocation zones - tuned for at least 100 allocations per zone */
 #define TINY_ZONE_SIZE (getPageSize() * 16)   /* N: Size for tiny zones */
 #define SMALL_ZONE_SIZE (getPageSize() * 128) /* M: Size for small zones */
 
 /* Debug settings */
-#define DEBUG_MEMORY_LEAKS 1     /* Whether to track allocations for leak detection */
-#define DEBUG_VERBOSE 0          /* Whether to print verbose debug info */
+#define DEBUG_MEMORY_LEAKS 1 /* Whether to track allocations for leak detection */
+#define DEBUG_VERBOSE 0      /* Whether to print verbose debug info */
 
 /* Metadata structure for memory blocks - placed before actual memory */
-typedef struct {
-    size_t size;      /* Size requested by user */
-    size_t realSize;  /* Actual size including header */
-    bool isFree;      /* Whether this block is free */
+typedef struct
+{
+    size_t size;     /* Size requested by user */
+    size_t realSize; /* Actual size including header */
+    bool isFree;     /* Whether this block is free */
 } BlockHeader;
 
 /* Zone types */
-typedef enum {
+typedef enum
+{
     ZONE_TINY,
     ZONE_SMALL,
     ZONE_LARGE
 } ZoneType;
 
 /* Linked list of memory zones */
-typedef struct Zone {
+typedef struct Zone
+{
     ZoneType type;
     size_t size;
-    struct Zone* next;
+    struct Zone *next;
 } Zone;
 
 /* Global state */
-static Zone* tinyZones = NULL;
-static Zone* smallZones = NULL;
-static Zone* largeZones = NULL;
+static Zone *tinyZones = NULL;
+static Zone *smallZones = NULL;
+static Zone *largeZones = NULL;
 
 /* For catching segfaults in tests */
 static jmp_buf segfaultJmpBuf;
@@ -65,24 +68,28 @@ static bool expectingSegfault = false;
 
 /* Memory leak detection */
 #if DEBUG_MEMORY_LEAKS
-typedef struct AllocRecord {
-    void* ptr;
+typedef struct AllocRecord
+{
+    void *ptr;
     size_t size;
-    struct AllocRecord* next;
+    struct AllocRecord *next;
 } AllocRecord;
 
-static AllocRecord* allocations = NULL;
+static AllocRecord *allocations = NULL;
 static size_t totalAllocated = 0;
 static size_t peakAllocated = 0;
 static size_t allocCount = 0;
 static size_t freeCount = 0;
 
 /* Track a new allocation */
-static void trackAllocation(void* ptr, size_t size) {
-    if (!ptr) return;
+static void trackAllocation(void *ptr, size_t size)
+{
+    if (!ptr)
+        return;
 
-    AllocRecord* record = malloc(sizeof(AllocRecord));
-    if (!record) return;  /* Malloc for tracking failed - just continue */
+    AllocRecord *record = malloc(sizeof(AllocRecord));
+    if (!record)
+        return; /* Malloc for tracking failed - just continue */
 
     record->ptr = ptr;
     record->size = size;
@@ -92,34 +99,44 @@ static void trackAllocation(void* ptr, size_t size) {
     totalAllocated += size;
     allocCount++;
 
-    if (totalAllocated > peakAllocated) {
+    if (totalAllocated > peakAllocated)
+    {
         peakAllocated = totalAllocated;
     }
 
-    if (DEBUG_VERBOSE) {
+    if (DEBUG_VERBOSE)
+    {
         printf("ALLOC: %p, size: %zu\n", ptr, size);
     }
 }
 
 /* Remove an allocation from tracking */
-static void untrackAllocation(void* ptr) {
-    if (!ptr) return;
+static void untrackAllocation(void *ptr)
+{
+    if (!ptr)
+        return;
 
-    AllocRecord* current = allocations;
-    AllocRecord* prev = NULL;
+    AllocRecord *current = allocations;
+    AllocRecord *prev = NULL;
 
-    while (current) {
-        if (current->ptr == ptr) {
-            if (prev) {
+    while (current)
+    {
+        if (current->ptr == ptr)
+        {
+            if (prev)
+            {
                 prev->next = current->next;
-            } else {
+            }
+            else
+            {
                 allocations = current->next;
             }
 
             totalAllocated -= current->size;
             freeCount++;
 
-            if (DEBUG_VERBOSE) {
+            if (DEBUG_VERBOSE)
+            {
                 printf("FREE: %p, size: %zu\n", ptr, current->size);
             }
 
@@ -132,34 +149,40 @@ static void untrackAllocation(void* ptr) {
     }
 
     /* If we get here, the pointer wasn't found */
-    if (DEBUG_VERBOSE) {
+    if (DEBUG_VERBOSE)
+    {
         printf("WARNING: Trying to free untracked pointer %p\n", ptr);
     }
 }
 
 /* Print memory leak report */
-static void printMemoryLeakReport(void) {
+static void printMemoryLeakReport(void)
+{
     printf("\n===== MEMORY LEAK REPORT =====\n");
     printf("Peak memory usage: %zu bytes\n", peakAllocated);
-    printf("Allocations: %zu, Frees: %zu, Difference: %zu\n",
-           allocCount, freeCount, allocCount - freeCount);
+    printf("Allocations: %zu, Frees: %zu, Difference: %zu\n", allocCount, freeCount, allocCount - freeCount);
 
-    if (allocations) {
+    if (allocations)
+    {
         printf("MEMORY LEAKS DETECTED: %zu bytes still allocated\n", totalAllocated);
 
         /* Print each leaked allocation */
-        AllocRecord* current = allocations;
+        AllocRecord *current = allocations;
         int count = 0;
-        while (current && count < 10) {  /* Limit to 10 leaks in the report */
+        while (current && count < 10)
+        { /* Limit to 10 leaks in the report */
             printf("  Leak %d: %p, size: %zu\n", count + 1, current->ptr, current->size);
             current = current->next;
             count++;
         }
 
-        if (current) {
+        if (current)
+        {
             printf("  ... and more leaks\n");
         }
-    } else {
+    }
+    else
+    {
         printf("No memory leaks detected!\n");
     }
     printf("==============================\n");
@@ -167,9 +190,10 @@ static void printMemoryLeakReport(void) {
 #endif
 
 /* Result type for allocation functions */
-typedef struct {
+typedef struct
+{
     bool succeeded;
-    void* ptr;
+    void *ptr;
 } ResultAlloc;
 
 /* Get system page size (immutable) */
@@ -232,31 +256,21 @@ static ResultAlloc createZone(const ZoneType type, const size_t requestedSize)
     }
 
     /* Use mmap to allocate memory directly from OS */
-    void* const mmapResult = mmap(
-        NULL,
-        zoneSize,
-        PROT_READ | PROT_WRITE,
-        MAP_PRIVATE | MAP_ANONYMOUS,
-        -1,
-        0
-    );
+    void *const mmapResult = mmap(NULL, zoneSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
     if (mmapResult == MAP_FAILED)
     {
-        return (ResultAlloc){
-            .succeeded = false,
-            .ptr = NULL
-        };
+        return (ResultAlloc){.succeeded = false, .ptr = NULL};
     }
 
     /* Initialize zone header */
-    Zone* const newZone = (Zone*)mmapResult;
+    Zone *const newZone = (Zone *)mmapResult;
     newZone->type = type;
     newZone->size = zoneSize;
     newZone->next = NULL;
 
     /* Initialize first block header (entire zone is free except headers) */
-    BlockHeader* const firstBlock = (BlockHeader*)(newZone + 1);
+    BlockHeader *const firstBlock = (BlockHeader *)(newZone + 1);
     const size_t availableSize = zoneSize - sizeof(Zone) - sizeof(BlockHeader);
 
     firstBlock->size = (type == ZONE_LARGE) ? requestedSize : availableSize;
@@ -266,43 +280,40 @@ static ResultAlloc createZone(const ZoneType type, const size_t requestedSize)
     /* Add zone to appropriate list */
     if (type == ZONE_TINY)
     {
-        Zone* const oldHead = tinyZones;
+        Zone *const oldHead = tinyZones;
         tinyZones = newZone;
         newZone->next = oldHead;
     }
     else if (type == ZONE_SMALL)
     {
-        Zone* const oldHead = smallZones;
+        Zone *const oldHead = smallZones;
         smallZones = newZone;
         newZone->next = oldHead;
     }
     else /* ZONE_LARGE */
     {
-        Zone* const oldHead = largeZones;
+        Zone *const oldHead = largeZones;
         largeZones = newZone;
         newZone->next = oldHead;
     }
 
-    return (ResultAlloc){
-        .succeeded = true,
-        .ptr = newZone
-    };
+    return (ResultAlloc){.succeeded = true, .ptr = newZone};
 }
 
 /* Check if two blocks are adjacent and can be coalesced */
-static bool areBlocksAdjacent(BlockHeader* first, BlockHeader* second)
+static bool areBlocksAdjacent(BlockHeader *first, BlockHeader *second)
 {
-    const char* firstEnd = (char*)(first + 1) + first->realSize;
-    return (BlockHeader*)firstEnd == second;
+    const char *firstEnd = (char *)(first + 1) + first->realSize;
+    return (BlockHeader *)firstEnd == second;
 }
 
 /* Find a free block in existing zones using best-fit strategy */
 static ResultAlloc findFreeBlock(const ZoneType type, const size_t size)
 {
-    Zone* currentZone = NULL;
+    Zone *currentZone = NULL;
 
     /* Best-fit variables */
-    BlockHeader* bestFitBlock = NULL;
+    BlockHeader *bestFitBlock = NULL;
     size_t bestFitSize = SIZE_MAX;
 
     if (type == ZONE_TINY)
@@ -316,14 +327,14 @@ static ResultAlloc findFreeBlock(const ZoneType type, const size_t size)
     else
     {
         /* Large allocations don't reuse blocks */
-        return (ResultAlloc){ .succeeded = false, .ptr = NULL };
+        return (ResultAlloc){.succeeded = false, .ptr = NULL};
     }
 
     /* Walk through zones of this type */
     while (currentZone != NULL)
     {
         /* Start at first block in zone */
-        BlockHeader* currentBlock = (BlockHeader*)(currentZone + 1);
+        BlockHeader *currentBlock = (BlockHeader *)(currentZone + 1);
         const size_t zoneEnd = (size_t)currentZone + currentZone->size;
 
         /* Walk through blocks in this zone */
@@ -340,16 +351,13 @@ static ResultAlloc findFreeBlock(const ZoneType type, const size_t size)
                     /* If perfect fit, return immediately */
                     if (bestFitSize == size)
                     {
-                        return (ResultAlloc){
-                            .succeeded = true,
-                            .ptr = bestFitBlock
-                        };
+                        return (ResultAlloc){.succeeded = true, .ptr = bestFitBlock};
                     }
                 }
             }
 
             /* Move to next block */
-            currentBlock = (BlockHeader*)((char*)currentBlock + currentBlock->realSize + sizeof(BlockHeader));
+            currentBlock = (BlockHeader *)((char *)currentBlock + currentBlock->realSize + sizeof(BlockHeader));
 
             /* Safety check */
             if ((size_t)currentBlock >= zoneEnd)
@@ -364,23 +372,17 @@ static ResultAlloc findFreeBlock(const ZoneType type, const size_t size)
     /* Return best fit if found */
     if (bestFitBlock != NULL)
     {
-        return (ResultAlloc){
-            .succeeded = true,
-            .ptr = bestFitBlock
-        };
+        return (ResultAlloc){.succeeded = true, .ptr = bestFitBlock};
     }
 
     /* No suitable free block found */
-    return (ResultAlloc){
-        .succeeded = false,
-        .ptr = NULL
-    };
+    return (ResultAlloc){.succeeded = false, .ptr = NULL};
 }
 
 /* Split a block if it's significantly larger than needed */
-static void* splitBlockIfNeeded(BlockHeader* block, const size_t requestedSize)
+static void *splitBlockIfNeeded(BlockHeader *block, const size_t requestedSize)
 {
-    const size_t minSplitSize = sizeof(BlockHeader) + 16;  /* Minimum practical size */
+    const size_t minSplitSize = sizeof(BlockHeader) + 16; /* Minimum practical size */
     const size_t currentSize = block->realSize;
     const size_t headerSize = sizeof(BlockHeader);
 
@@ -388,7 +390,7 @@ static void* splitBlockIfNeeded(BlockHeader* block, const size_t requestedSize)
     {
         /* Enough space to split - create new block after this one */
         const size_t remainingSize = currentSize - requestedSize - headerSize;
-        BlockHeader* const newBlock = (BlockHeader*)((char*)(block + 1) + requestedSize);
+        BlockHeader *const newBlock = (BlockHeader *)((char *)(block + 1) + requestedSize);
 
         /* Initialize the new block */
         newBlock->size = remainingSize - headerSize;
@@ -408,28 +410,29 @@ static void* splitBlockIfNeeded(BlockHeader* block, const size_t requestedSize)
         block->isFree = false;
     }
 
-    return (void*)(block + 1);
+    return (void *)(block + 1);
 }
 
 /* Coalesce adjacent free blocks to reduce fragmentation */
-static void coalesceZone(Zone* zone)
+static void coalesceZone(Zone *zone)
 {
-    if (!zone) return;
+    if (!zone)
+        return;
 
     const size_t zoneEnd = (size_t)zone + zone->size;
-    BlockHeader* currentBlock = (BlockHeader*)(zone + 1);
+    BlockHeader *currentBlock = (BlockHeader *)(zone + 1);
 
     while ((size_t)currentBlock < zoneEnd)
     {
         /* Skip if not free */
         if (!currentBlock->isFree)
         {
-            currentBlock = (BlockHeader*)((char*)currentBlock + currentBlock->realSize + sizeof(BlockHeader));
+            currentBlock = (BlockHeader *)((char *)currentBlock + currentBlock->realSize + sizeof(BlockHeader));
             continue;
         }
 
         /* Try to find next block */
-        BlockHeader* nextBlock = (BlockHeader*)((char*)currentBlock + currentBlock->realSize + sizeof(BlockHeader));
+        BlockHeader *nextBlock = (BlockHeader *)((char *)currentBlock + currentBlock->realSize + sizeof(BlockHeader));
 
         /* If next block is past end or not free, move on */
         if ((size_t)nextBlock >= zoneEnd || !nextBlock->isFree)
@@ -447,7 +450,7 @@ static void coalesceZone(Zone* zone)
 }
 
 /* The main memory allocation function */
-void* myMalloc(const size_t size)
+void *myMalloc(const size_t size)
 {
     if (size == 0)
     {
@@ -460,12 +463,12 @@ void* myMalloc(const size_t size)
     /* Try to find a free block in existing zones */
     const ResultAlloc freeBlockResult = findFreeBlock(zoneType, size);
 
-    void* result = NULL;
+    void *result = NULL;
 
     if (freeBlockResult.succeeded)
     {
         /* Found a free block - use it */
-        result = splitBlockIfNeeded((BlockHeader*)freeBlockResult.ptr, size);
+        result = splitBlockIfNeeded((BlockHeader *)freeBlockResult.ptr, size);
     }
     else
     {
@@ -481,25 +484,26 @@ void* myMalloc(const size_t size)
         /* For large allocations, return memory right after the first block header */
         if (zoneType == ZONE_LARGE)
         {
-            BlockHeader* const blockHeader = (BlockHeader*)((Zone*)newZoneResult.ptr + 1);
+            BlockHeader *const blockHeader = (BlockHeader *)((Zone *)newZoneResult.ptr + 1);
 
             /* Mark as used */
             blockHeader->size = size;
             blockHeader->isFree = false;
 
-            result = (void*)(blockHeader + 1);
+            result = (void *)(blockHeader + 1);
         }
         else
         {
             /* For small/tiny, the first block in the new zone is guaranteed to be big enough */
-            BlockHeader* const firstBlock = (BlockHeader*)((Zone*)newZoneResult.ptr + 1);
+            BlockHeader *const firstBlock = (BlockHeader *)((Zone *)newZoneResult.ptr + 1);
             result = splitBlockIfNeeded(firstBlock, size);
         }
     }
 
     /* Track allocation if debugging is enabled */
 #if DEBUG_MEMORY_LEAKS
-    if (result) {
+    if (result)
+    {
         trackAllocation(result, size);
     }
 #endif
@@ -508,7 +512,7 @@ void* myMalloc(const size_t size)
 }
 
 /* Free memory previously allocated with myMalloc */
-void myFree(void* ptr)
+void myFree(void *ptr)
 {
     if (ptr == NULL)
     {
@@ -521,15 +525,15 @@ void myFree(void* ptr)
 #endif
 
     /* Get block header - it's right before the user's pointer */
-    BlockHeader* const blockHeader = ((BlockHeader*)ptr) - 1;
+    BlockHeader *const blockHeader = ((BlockHeader *)ptr) - 1;
 
     /* Mark the block as free */
     blockHeader->isFree = true;
 
     /* For large allocations, consider unmapping directly */
     /* First find which zone this belongs to */
-    Zone* prevZone = NULL;
-    Zone* currentZone = largeZones;
+    Zone *prevZone = NULL;
+    Zone *currentZone = largeZones;
 
     while (currentZone != NULL)
     {
@@ -598,8 +602,9 @@ static void printMemoryStats(void)
     size_t totalAllocated = 0;
 
     /* Count tiny zones */
-    Zone* zone = tinyZones;
-    while (zone != NULL) {
+    Zone *zone = tinyZones;
+    while (zone != NULL)
+    {
         tinyCount++;
         totalAllocated += zone->size;
         zone = zone->next;
@@ -607,7 +612,8 @@ static void printMemoryStats(void)
 
     /* Count small zones */
     zone = smallZones;
-    while (zone != NULL) {
+    while (zone != NULL)
+    {
         smallCount++;
         totalAllocated += zone->size;
         zone = zone->next;
@@ -615,14 +621,14 @@ static void printMemoryStats(void)
 
     /* Count large zones */
     zone = largeZones;
-    while (zone != NULL) {
+    while (zone != NULL)
+    {
         largeCount++;
         totalAllocated += zone->size;
         zone = zone->next;
     }
 
-    printf("Memory zones: Tiny=%zu, Small=%zu, Large=%zu\n",
-           tinyCount, smallCount, largeCount);
+    printf("Memory zones: Tiny=%zu, Small=%zu, Large=%zu\n", tinyCount, smallCount, largeCount);
     printf("Total memory allocated: %zu bytes\n", totalAllocated);
 }
 
@@ -649,7 +655,7 @@ static void stressTest(void)
     const int maxAllocSize = 4096;
 
     /* Arrays to store allocated memory */
-    void* allocations[testCount];
+    void *allocations[testCount];
     size_t sizes[testCount];
 
     srand(time(NULL));
@@ -708,12 +714,12 @@ static void edgeCaseTests(void)
 
     /* Test NULL free */
     printf("Testing myFree(NULL)... ");
-    myFree(NULL);  /* Should do nothing and not crash */
+    myFree(NULL); /* Should do nothing and not crash */
     printf("OK\n");
 
     /* Test zero allocation */
     printf("Testing myMalloc(0)... ");
-    void* const zeroPtr = myMalloc(0);
+    void *const zeroPtr = myMalloc(0);
     if (zeroPtr == NULL)
     {
         printf("OK - returned NULL as expected\n");
@@ -726,10 +732,10 @@ static void edgeCaseTests(void)
 
     /* Test tiny allocation */
     printf("Testing tiny allocation (1 byte)... ");
-    void* const tinyPtr = myMalloc(1);
+    void *const tinyPtr = myMalloc(1);
     if (tinyPtr != NULL)
     {
-        *((unsigned char*)tinyPtr) = 0xFF;  /* Should be safe to write to */
+        *((unsigned char *)tinyPtr) = 0xFF; /* Should be safe to write to */
         printf("OK\n");
         myFree(tinyPtr);
     }
@@ -741,10 +747,10 @@ static void edgeCaseTests(void)
     /* Test large allocation */
     printf("Testing large allocation (1MB)... ");
     const size_t largeSize = 1024 * 1024;
-    void* const largePtr = myMalloc(largeSize);
+    void *const largePtr = myMalloc(largeSize);
     if (largePtr != NULL)
     {
-        memset(largePtr, 0xAA, largeSize);  /* Should be safe to write to */
+        memset(largePtr, 0xAA, largeSize); /* Should be safe to write to */
         printf("OK\n");
         myFree(largePtr);
     }
@@ -767,7 +773,7 @@ static void invalidFreeTests(void)
 
     /* Test double free */
     printf("Testing double free... ");
-    void* const ptr = myMalloc(100);
+    void *const ptr = myMalloc(100);
     if (ptr)
     {
         myFree(ptr);
@@ -776,7 +782,7 @@ static void invalidFreeTests(void)
         expectingSegfault = true;
         if (setjmp(segfaultJmpBuf) == 0)
         {
-            myFree(ptr);  /* Second free of the same pointer */
+            myFree(ptr); /* Second free of the same pointer */
             printf("OK - didn't crash on double free\n");
         }
         else
@@ -792,7 +798,7 @@ static void invalidFreeTests(void)
 
     /* Test freeing an invalid pointer */
     printf("Testing freeing invalid pointer... ");
-    void* const badPtr = (void*)0x12345678;
+    void *const badPtr = (void *)0x12345678;
 
     expectingSegfault = true;
     if (setjmp(segfaultJmpBuf) == 0)
@@ -815,7 +821,7 @@ static void useAfterFreeTest(void)
     /* Allocate some memory */
     printf("Allocating memory for UAF test... ");
     const size_t size = 1024;
-    unsigned char* ptr = (unsigned char*)myMalloc(size);
+    unsigned char *ptr = (unsigned char *)myMalloc(size);
 
     if (ptr)
     {
@@ -861,8 +867,8 @@ static void useAfterFreeTest(void)
         {
             /* Try to write to freed memory - this is undefined behavior */
             ptr[0] = 0xFF;
-            ptr[size/2] = 0xFF;
-            ptr[size-1] = 0xFF;
+            ptr[size / 2] = 0xFF;
+            ptr[size - 1] = 0xFF;
 
             printf("Memory still accessible after free (expected behavior for our allocator)\n");
         }
@@ -893,7 +899,7 @@ static void exhaustionTest(void)
     while (1)
     {
         printf("Trying to allocate %zu bytes... ", size);
-        void* ptr = myMalloc(size);
+        void *ptr = myMalloc(size);
 
         if (ptr)
         {
@@ -933,7 +939,7 @@ static void fragmentationTest(void)
     const size_t blockSize = 128;
 
     /* Arrays to store allocated memory */
-    void* blocks[blockCount];
+    void *blocks[blockCount];
 
     /* First, allocate many blocks of the same size */
     printf("Allocating %d blocks of %zu bytes each... ", blockCount, blockSize);
@@ -976,7 +982,7 @@ static void fragmentationTest(void)
         }
     }
 
-    printf("Successfully allocated %d/%d larger blocks\n", successCount, blockCount/2);
+    printf("Successfully allocated %d/%d larger blocks\n", successCount, blockCount / 2);
 
     /* Verify that the odd-indexed blocks still have their original content */
     printf("Verifying integrity of unfreed blocks... ");
@@ -986,7 +992,7 @@ static void fragmentationTest(void)
     {
         if (blocks[i])
         {
-            unsigned char* data = (unsigned char*)blocks[i];
+            unsigned char *data = (unsigned char *)blocks[i];
             bool isCorrupt = false;
 
             for (size_t j = 0; j < blockSize; j++)

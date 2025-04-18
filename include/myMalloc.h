@@ -1,8 +1,8 @@
 #ifndef MY_MALLOC_H
 #define MY_MALLOC_H
 
-#include <stdlib.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 /**
  * @file myMalloc.h
@@ -14,7 +14,7 @@
  */
 
 /* Size constants */
-#define TINY_MAX_SIZE 128	/* n: max size for tiny allocations */
+#define TINY_MAX_SIZE 128   /* n: max size for tiny allocations */
 #define SMALL_MAX_SIZE 1024 /* m: max size for small allocations */
 
 /* Function prototypes - implementation functions */

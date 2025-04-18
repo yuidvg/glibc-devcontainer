@@ -1,21 +1,21 @@
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdio.h>
 #include "my_malloc.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 void *my_malloc(size_t size)
 {
     // Simple placeholder implementation
     printf("my_malloc called with size: %zu\n", size);
-    return malloc(size);  // Using system malloc for now
+    return malloc(size); // Using system malloc for now
 }
 
 void my_free(void *ptr)
 {
     // Simple placeholder implementation
     printf("my_free called with pointer: %p\n", ptr);
-    free(ptr);  // Using system free for now
+    free(ptr); // Using system free for now
 }
 
 void print_memory_stats(void)

@@ -1,8 +1,8 @@
 #ifndef MY_MALLOC_INTERNAL_H
 #define MY_MALLOC_INTERNAL_H
 
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -18,42 +18,42 @@
 #endif
 
 /* Size of allocation zones - tuned for at least 100 allocations per zone */
-#define TINY_ZONE_SIZE (getPageSize() * 16)	  /* N: Size for tiny zones */
+#define TINY_ZONE_SIZE (getPageSize() * 16)   /* N: Size for tiny zones */
 #define SMALL_ZONE_SIZE (getPageSize() * 128) /* M: Size for small zones */
 
 /* Debug settings */
 #define DEBUG_MEMORY_LEAKS 1 /* Whether to track allocations for leak detection */
-#define DEBUG_VERBOSE 0		 /* Whether to print verbose debug info */
+#define DEBUG_VERBOSE 0      /* Whether to print verbose debug info */
 
 /* Metadata structure for memory blocks - placed before actual memory */
 typedef struct
 {
-	const size_t size;	   /* Size requested by user */
-	const size_t realSize; /* Actual size including header */
-	const bool isFree;	   /* Whether this block is free */
+    const size_t size;     /* Size requested by user */
+    const size_t realSize; /* Actual size including header */
+    const bool isFree;     /* Whether this block is free */
 } BlockHeader;
 
 /* Zone types */
 typedef enum
 {
-	ZONE_TINY,
-	ZONE_SMALL,
-	ZONE_LARGE
+    ZONE_TINY,
+    ZONE_SMALL,
+    ZONE_LARGE
 } ZoneType;
 
 /* Linked list of memory zones */
 typedef struct Zone
 {
-	const ZoneType type;
-	const size_t size;
-	struct Zone *next;
+    const ZoneType type;
+    const size_t size;
+    struct Zone *next;
 } Zone;
 
 /* Result type for allocation functions */
 typedef struct
 {
-	const bool succeeded;
-	void *ptr;
+    const bool succeeded;
+    void *ptr;
 } ResultAlloc;
 
 /* Get system page size (immutable) */
