@@ -60,14 +60,14 @@ $(BIN_TEST): $(OBJS_TEST) $(BIN_LIB) | $(DIR_BIN)
 all: $(DIR_BUILD) $(DIR_OBJ) $(DIR_BIN) $(DIR_OBJ_LIB) $(DIR_OBJ_TEST) $(BIN_LIB) $(BIN_TEST)
 
 test: $(BIN_TEST)
-	./$(BIN_TEST)
+	LD_LIBRARY_PATH=./$(DIR_BIN) ./$(BIN_TEST)
 
 clean:
-	rm -rf $(DIR_OBJ) $(DIR_BIN)
+	rm -rf $(DIR_BUILD)
 
 re: clean all
 
 leak: $(BIN_TEST)
-	valgrind --leak-check=full --show-leak-kinds=all ./$(BIN_TEST)
+	LD_LIBRARY_PATH=./$(DIR_BIN) valgrind --leak-check=full --show-leak-kinds=all ./$(BIN_TEST)
 
 .PHONY: all clean re test leak
