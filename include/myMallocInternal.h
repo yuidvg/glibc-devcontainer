@@ -1,5 +1,4 @@
-#ifndef MY_MALLOC_INTERNAL_H
-#define MY_MALLOC_INTERNAL_H
+#pragma once
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -82,5 +81,3 @@ void coalesceZone(Zone *zone);
 void trackAllocation(const void *ptr, const size_t size);
 void untrackAllocation(const void *ptr);
 #endif
-
-#endif /* MY_MALLOC_INTERNAL_H */

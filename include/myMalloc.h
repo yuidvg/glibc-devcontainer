@@ -1,5 +1,4 @@
-#ifndef MY_MALLOC_H
-#define MY_MALLOC_H
+#pragma once
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -26,5 +25,3 @@ void print_memory_leak_report(void);
 /* System override functions */
 void *malloc(size_t size);
 void free(void *ptr);
-
-#endif /* MY_MALLOC_H */
