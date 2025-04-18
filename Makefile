@@ -1,5 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Werror -g -std=c99 -I./include
+CFLAGS = -Wall -Wextra -Werror -I./include
+CFLAGS_DEBUG = -g -std=c99
 SRC_DIR = src
 TEST_DIR = test
 OBJ_DIR = obj
@@ -23,12 +24,12 @@ MAIN_OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(MAIN_SRCS))
 # Directories
 DIRS = $(OBJ_DIR) $(BIN_DIR)
 
-# Default target
-all: $(DIRS) $(LIB_TARGET) $(TEST_TARGET) $(MAIN_TARGET)
-
 # Create directories
 $(OBJ_DIR) $(BIN_DIR):
 	mkdir -p $@
+
+# Default target
+all: $(DIRS) $(LIB_TARGET) $(TEST_TARGET) $(MAIN_TARGET)
 
 # Compile library source files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
@@ -63,10 +64,10 @@ clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR)
 
 # Clean and rebuild
-rebuild: clean all
+re: clean all
 
 # Run Valgrind memory check
-memcheck: $(TEST_TARGET)
+leak: $(TEST_TARGET)
 	valgrind --leak-check=full --show-leak-kinds=all ./$(TEST_TARGET)
 
-.PHONY: all clean rebuild test memcheck run
+.PHONY: all clean rebuild test leak run
