@@ -1,8 +1,4 @@
 #pragma once
-
-#include <stdbool.h>
-#include <stdlib.h>
-
 /**
  * @file myMalloc.h
  * @brief Memory allocator implementation with pre-allocated zones.
@@ -12,16 +8,13 @@
  * handling strategies for each.
  */
 
-/* Size constants */
-#define TINY_MAX_SIZE 128   /* n: max size for tiny allocations */
-#define SMALL_MAX_SIZE 1024 /* m: max size for small allocations */
-
 /* Function prototypes - implementation functions */
-void *my_malloc(size_t size);
-void my_free(void *ptr);
-void print_memory_stats(void);
-void print_memory_leak_report(void);
+void *ftMalloc(size_t size);
+void ftFree(void *ptr);
+void *ftRealloc(void *ptr, size_t size);
+void show_alloc_mem(void);
 
 /* System override functions */
-void *malloc(size_t size);
-void free(void *ptr);
+// void *malloc(size_t size);
+// void free(void *ptr);
+// void *realloc(void *ptr, size_t size);

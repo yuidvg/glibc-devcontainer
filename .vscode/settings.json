@@ -1,6 +1,7 @@
 {
     "git.ignoreLimitWarning": true,
     "files.associations": {
-        "wchar.h": "c"
+        "wchar.h": "c",
+        "all.h": "c"
     }
 }
