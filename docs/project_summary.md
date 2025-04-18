@@ -9,11 +9,13 @@ This project implements a custom memory allocator inspired by the `malloc` and `
 ### 1. Memory Management Strategy
 
 The allocator divides memory into three categories:
+
 - **Tiny allocations**: <= 128 bytes
 - **Small allocations**: > 128 bytes and <= 1024 bytes
 - **Large allocations**: > 1024 bytes
 
 Each category has its own memory zone management strategy:
+
 - Tiny and small allocations use pre-allocated zones
 - Large allocations are mapped directly from the OS
 
@@ -40,31 +42,34 @@ Each category has its own memory zone management strategy:
 
 ```
 /
-├── include/             # Header files
-│   ├── my_malloc.h      # Public API
-│   └── my_malloc_internal.h  # Internal implementation details
-├── src/                 # Source code
-│   ├── my_malloc.c      # Core implementation
-│   └── main.c           # Demo program
-├── test/                # Test suite
-│   └── test_my_malloc.c # Comprehensive tests
-├── bin/                 # Compiled binaries
-├── obj/                 # Object files
-├── docs/                # Documentation
-└── Makefile             # Build system
+├── include/                # Header files
+│   ├── myMalloc.h          # Public API
+│   └── myMallocInternal.h  # Internal implementation details
+├── src/                    # Source code
+│   ├── myMalloc.c          # Core implementation
+│   └── main.c              # Demo program
+├── test/                   # Test suite
+│   └── testMyMalloc.c      # Comprehensive tests
+├── bin/                    # Compiled binaries
+├── obj/                    # Object files
+├── docs/                   # Documentation
+└── Makefile                # Build system
 ```
 
 ## Recent Events
 
 1. **Code Organization**
+
    - Separated code into public API and internal implementation
    - Created comprehensive test suite
 
 2. **Build System Enhancement**
+
    - Added `-Werror` flag to treat warnings as errors
    - Fixed warnings to ensure clean compilation
 
 3. **Memory Allocator Enhancements**
+
    - Improved memory coalescing algorithm
    - Added functional-style C code patterns
    - Enhanced error handling for edge cases

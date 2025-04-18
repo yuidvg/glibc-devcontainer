@@ -42,22 +42,22 @@ make clean
 ## Example
 
 ```c
-#include "include/my_malloc.h"
+#include "include/myMalloc.h"
 
 int main(void) {
     // Allocate memory
-    void* ptr = my_malloc(100);
+    void* ptr = myMalloc(100);
 
     // Use the memory
     if (ptr) {
         // ... do something with the memory
 
         // Free the memory when done
-        my_free(ptr);
+        myFree(ptr);
     }
 
     // Check for memory leaks
-    print_memory_leak_report();
+    printMemoryLeakReport();
 
     return 0;
 }

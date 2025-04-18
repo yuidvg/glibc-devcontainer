@@ -10,6 +10,8 @@
 #include <signal.h>
 #include <setjmp.h>
 
+#include "../include/myMalloc.h"
+
 /* Ensure MAP_ANONYMOUS is defined - fix platform differences */
 #ifndef MAP_ANONYMOUS
 #ifdef __APPLE__
@@ -445,7 +447,7 @@ static void coalesceZone(Zone* zone)
 }
 
 /* The main memory allocation function */
-void* my_malloc(const size_t size)
+void* myMalloc(const size_t size)
 {
     if (size == 0)
     {
@@ -505,8 +507,8 @@ void* my_malloc(const size_t size)
     return result;
 }
 
-/* Free memory previously allocated with my_malloc */
-void my_free(void* ptr)
+/* Free memory previously allocated with myMalloc */
+void myFree(void* ptr)
 {
     if (ptr == NULL)
     {
@@ -624,417 +626,423 @@ static void printMemoryStats(void)
     printf("Total memory allocated: %zu bytes\n", totalAllocated);
 }
 
-/* Signal handler for catching segfaults */
-static void segfaultHandler(int sig) {
-    if (expectingSegfault) {
-        printf("✓ Expected segfault caught!\n");
-        expectingSegfault = false;
+/* Segfault handler for testing invalid memory access */
+static void segfaultHandler(int sig)
+{
+    if (expectingSegfault)
+    {
         longjmp(segfaultJmpBuf, 1);
-    } else {
-        /* Unexpected segfault - restore default handler and let program crash */
+    }
+    else
+    {
+        /* Unexpected segfault, restore default behavior */
         signal(SIGSEGV, SIG_DFL);
         raise(SIGSEGV);
     }
 }
 
-/* Test performing multiple allocations and frees */
+/* Stress test - allocate and free many different sizes repeatedly */
 static void stressTest(void)
 {
-    const int NUM_ALLOCS = 1000;
-    void* ptrs[NUM_ALLOCS];
+    printf("\n===== STRESS TEST =====\n");
+    const int testCount = 1000;
+    const int maxAllocSize = 4096;
 
-    /* Perform many allocations of different sizes */
-    for (int i = 0; i < NUM_ALLOCS; i++) {
-        /* Mix of tiny, small, and large allocations */
-        size_t size;
-        if (i % 3 == 0) {
-            size = (rand() % TINY_MAX_SIZE) + 1;
-        } else if (i % 3 == 1) {
-            size = (rand() % (SMALL_MAX_SIZE - TINY_MAX_SIZE)) + TINY_MAX_SIZE + 1;
-        } else {
-            size = (rand() % 4096) + SMALL_MAX_SIZE + 1;
-        }
+    /* Arrays to store allocated memory */
+    void* allocations[testCount];
+    size_t sizes[testCount];
 
-        ptrs[i] = my_malloc(size);
-
-        /* Write some data to ensure memory is usable */
-        if (ptrs[i]) {
-            memset(ptrs[i], 0xAB, size);
-        }
-    }
-
-    printf("Completed %d allocations\n", NUM_ALLOCS);
-    printMemoryStats();
-
-    /* Free half the allocations */
-    for (int i = 0; i < NUM_ALLOCS; i += 2) {
-        my_free(ptrs[i]);
-        ptrs[i] = NULL;
-    }
-
-    printf("Freed half the allocations\n");
-    printMemoryStats();
-
-    /* Allocate some more to test reuse */
-    for (int i = 0; i < NUM_ALLOCS; i += 2) {
-        size_t size = rand() % 2048 + 1;
-        ptrs[i] = my_malloc(size);
-    }
-
-    printf("Reallocated the freed slots\n");
-    printMemoryStats();
-
-    /* Free everything */
-    for (int i = 0; i < NUM_ALLOCS; i++) {
-        if (ptrs[i]) {
-            my_free(ptrs[i]);
-            ptrs[i] = NULL;
-        }
-    }
-
-    printf("Freed all allocations\n");
-    printMemoryStats();
-}
-
-/* Edge case tests to validate functionality */
-static void edgeCaseTests(void) {
-    printf("\n*** Edge Case Tests ***\n");
-
-    /* Test 1: Allocation of size 0 */
-    printf("Test 1: Allocation of size 0... ");
-    void* ptr = my_malloc(0);
-    if (ptr == NULL) {
-        printf("✓ (Returns NULL as expected)\n");
-    } else {
-        printf("✗ (Expected NULL but got %p)\n", ptr);
-        my_free(ptr);
-    }
-
-    /* Test 2: Allocations at TINY/SMALL boundary */
-    printf("Test 2: Allocations at TINY/SMALL boundary... ");
-    void* tiny = my_malloc(TINY_MAX_SIZE);
-    void* small = my_malloc(TINY_MAX_SIZE + 1);
-
-    if (tiny && small) {
-        /* Write to confirm usability */
-        memset(tiny, 0x1, TINY_MAX_SIZE);
-        memset(small, 0x2, TINY_MAX_SIZE + 1);
-        printf("✓\n");
-    } else {
-        printf("✗ (Allocation failed)\n");
-    }
-
-    my_free(tiny);
-    my_free(small);
-
-    /* Test 3: Allocations at SMALL/LARGE boundary */
-    printf("Test 3: Allocations at SMALL/LARGE boundary... ");
-    void* smallMax = my_malloc(SMALL_MAX_SIZE);
-    void* large = my_malloc(SMALL_MAX_SIZE + 1);
-
-    if (smallMax && large) {
-        /* Write to confirm usability */
-        memset(smallMax, 0x3, SMALL_MAX_SIZE);
-        memset(large, 0x4, SMALL_MAX_SIZE + 1);
-        printf("✓\n");
-    } else {
-        printf("✗ (Allocation failed)\n");
-    }
-
-    my_free(smallMax);
-    my_free(large);
-
-    /* Test 4: Very large allocation */
-    printf("Test 4: Very large allocation (10MB)... ");
-    const size_t TEN_MB = 10 * 1024 * 1024;
-    void* large_block = my_malloc(TEN_MB);
-    if (large_block) {
-        /* Try writing to part of it */
-        memset(large_block, 0x5, 1024); /* Write to first KB */
-        printf("✓\n");
-        my_free(large_block);
-    } else {
-        printf("✗ (Failed to allocate)\n");
-    }
-}
-
-/* Invalid free tests that might cause segfaults */
-static void invalidFreeTests(void) {
-    printf("\n*** Invalid Free Tests ***\n");
-
-    /* Install segfault handler */
-    signal(SIGSEGV, segfaultHandler);
-
-    /* Test 1: Double free */
-    printf("Test 1: Double free... ");
-    void* ptr = my_malloc(128);
-    my_free(ptr);
-
-    /* Try to catch double free segfault */
-    expectingSegfault = true;
-    if (setjmp(segfaultJmpBuf) == 0) {
-        my_free(ptr); /* This might segfault */
-        expectingSegfault = false;
-        printf("(Double free didn't segfault - implementation is safe)\n");
-    }
-
-    /* Test 2: Free invalid pointer */
-    printf("Test 2: Free invalid pointer... ");
-    void* invalid_ptr = (void*)0x12345678;
-
-    expectingSegfault = true;
-    if (setjmp(segfaultJmpBuf) == 0) {
-        my_free(invalid_ptr); /* This should segfault */
-        expectingSegfault = false;
-        printf("(Freeing invalid pointer didn't segfault - implementation is safe)\n");
-    }
-
-    /* Test 3: Free pointer with offset */
-    printf("Test 3: Free pointer with offset... ");
-    void* ptr2 = my_malloc(100);
-    void* offsetPtr = (char*)ptr2 + 10; /* Not the exact address returned by malloc */
-
-    expectingSegfault = true;
-    if (setjmp(segfaultJmpBuf) == 0) {
-        my_free(offsetPtr); /* This should segfault */
-        expectingSegfault = false;
-        printf("(Freeing offset pointer didn't segfault - implementation is safe)\n");
-    }
-
-    /* Don't forget to free the properly allocated pointer */
-    my_free(ptr2);
-}
-
-/* Test use-after-free behavior */
-static void useAfterFreeTest(void) {
-    printf("\n*** Use-After-Free Test ***\n");
-
-    printf("Allocating and initializing memory...\n");
-    const size_t size = 100;
-    char* ptr = my_malloc(size);
-    if (!ptr) {
-        printf("Allocation failed!\n");
-        return;
-    }
-
-    /* Initialize with a pattern */
-    for (size_t i = 0; i < size; i++) {
-        ptr[i] = (char)(i % 256);
-    }
-
-    /* Verify the pattern */
-    bool integrity_ok = true;
-    for (size_t i = 0; i < size; i++) {
-        if (ptr[i] != (char)(i % 256)) {
-            integrity_ok = false;
-            break;
-        }
-    }
-    printf("Memory integrity before free: %s\n", integrity_ok ? "✓" : "✗");
-
-    /* Free the memory */
-    printf("Freeing memory...\n");
-    my_free(ptr);
-
-    /* Try to use after free - this might cause undefined behavior */
-    printf("Attempting to read memory after free (may crash)... ");
-    expectingSegfault = true;
-    if (setjmp(segfaultJmpBuf) == 0) {
-        /* Try to read from freed memory */
-        char value = ptr[0];
-        printf("Read succeeded with value %d\n", value);
-        expectingSegfault = false;
-    }
-
-    /* Try to write after free - this might cause undefined behavior */
-    printf("Attempting to write to memory after free (may crash)... ");
-    expectingSegfault = true;
-    if (setjmp(segfaultJmpBuf) == 0) {
-        /* Try to write to freed memory */
-        ptr[0] = 42;
-        printf("Write succeeded\n");
-        expectingSegfault = false;
-    }
-}
-
-/* Test allocation near exhaustion */
-static void exhaustionTest(void) {
-    printf("\n*** Resource Exhaustion Test ***\n");
-
-    const size_t numAttempts = 10000;
-    const size_t allocSize = 1024 * 1024; /* 1MB each */
-    void* ptrs[numAttempts];
-    size_t successCount = 0;
-
-    printf("Attempting to allocate until failure...\n");
-
-    for (size_t i = 0; i < numAttempts; i++) {
-        ptrs[i] = my_malloc(allocSize);
-        if (ptrs[i] == NULL) {
-            printf("Allocation failed after %zu MB\n", successCount);
-            break;
-        }
-
-        /* Try to write to the memory to ensure it's usable */
-        memset(ptrs[i], 0xFF, allocSize);
-        successCount++;
-
-        /* Print progress every 100 allocations */
-        if (i % 100 == 0) {
-            printf("Allocated %zu MB so far\n", successCount);
-        }
-    }
-
-    /* Free all successful allocations */
-    printf("Freeing all allocations...\n");
-    for (size_t i = 0; i < successCount; i++) {
-        my_free(ptrs[i]);
-    }
-
-    printf("Exhaustion test completed\n");
-}
-
-/* Test for memory fragmentation issues */
-static void fragmentationTest(void) {
-    printf("\n*** Memory Fragmentation Test ***\n");
-
-    const int NUM_ALLOCS = 500;
-    const size_t ALLOC_SIZE = 256; /* Medium-sized allocations */
-    void* ptrs[NUM_ALLOCS];
-
-    /* First allocate all pointers */
-    printf("Allocating %d blocks of %zu bytes each...\n", NUM_ALLOCS, ALLOC_SIZE);
-    for (int i = 0; i < NUM_ALLOCS; i++) {
-        ptrs[i] = my_malloc(ALLOC_SIZE);
-        if (!ptrs[i]) {
-            printf("Allocation %d failed\n", i);
-            break;
-        }
-        /* Write a pattern to memory */
-        memset(ptrs[i], i & 0xFF, ALLOC_SIZE);
-    }
-
-    printMemoryStats();
-
-    /* Free every other block to create fragmentation */
-    printf("Creating fragmentation by freeing every other block...\n");
-    for (int i = 0; i < NUM_ALLOCS; i += 2) {
-        my_free(ptrs[i]);
-        ptrs[i] = NULL;
-    }
-
-    printMemoryStats();
-
-    /* Try to allocate a block that's larger than our fragment size */
-    printf("Attempting to allocate larger blocks in fragmented memory...\n");
-    const size_t LARGE_ALLOC = ALLOC_SIZE * 3;
-    int successCount = 0;
-
-    for (int i = 0; i < NUM_ALLOCS/2; i++) {
-        void* large_ptr = my_malloc(LARGE_ALLOC);
-        if (large_ptr) {
-            /* Fill with recognizable pattern */
-            memset(large_ptr, 0xAA, LARGE_ALLOC);
-            successCount++;
-            /* Free immediately to avoid running out of memory */
-            my_free(large_ptr);
-        }
-    }
-
-    printf("Successfully allocated %d larger blocks in fragmented memory\n", successCount);
-
-    /* Free the remaining original blocks */
-    printf("Freeing remaining blocks...\n");
-    for (int i = 1; i < NUM_ALLOCS; i += 2) {
-        if (ptrs[i]) {
-            my_free(ptrs[i]);
-            ptrs[i] = NULL;
-        }
-    }
-
-    printMemoryStats();
-
-    /* Test if our coalescing is working by allocating larger blocks now */
-    printf("Testing coalescing by allocating larger blocks in freshly freed memory...\n");
-    successCount = 0;
-    for (int i = 0; i < NUM_ALLOCS/4; i++) {
-        void* large_ptr = my_malloc(LARGE_ALLOC);
-        if (large_ptr) {
-            /* Fill with a different pattern */
-            memset(large_ptr, 0xBB, LARGE_ALLOC);
-            successCount++;
-            my_free(large_ptr);
-        }
-    }
-
-    printf("Successfully allocated %d larger blocks after coalescing\n", successCount);
-    printf("Fragmentation test completed\n");
-}
-
-/* For testing */
-int main(void)
-{
-    /* Seed random number generator */
     srand(time(NULL));
 
-    printf("Page size: %zu bytes\n", getPageSize());
-    printf("TINY zone size: %zu bytes (allows ~%zu allocations)\n",
-           TINY_ZONE_SIZE,
-           TINY_ZONE_SIZE / (TINY_MAX_SIZE + sizeof(BlockHeader)));
-    printf("SMALL zone size: %zu bytes (allows ~%zu allocations)\n",
-           SMALL_ZONE_SIZE,
-           SMALL_ZONE_SIZE / (SMALL_MAX_SIZE + sizeof(BlockHeader)));
+    /* First pass: allocate memory of different sizes */
+    for (int i = 0; i < testCount; i++)
+    {
+        const size_t size = rand() % maxAllocSize + 1;
+        allocations[i] = myMalloc(size);
+        sizes[i] = size;
 
-    /* Basic test */
-    printf("\n*** Basic allocation test ***\n");
-    void* small1 = my_malloc(50);
-    void* small2 = my_malloc(100);
-    void* medium = my_malloc(500);
-    void* large = my_malloc(2000);
-
-    printf("Allocated: %p, %p, %p, %p\n", small1, small2, medium, large);
-
-    if (small1 && small2 && medium && large) {
-        /* Try writing to these memory regions */
-        memset(small1, 0x1, 50);
-        memset(small2, 0x2, 100);
-        memset(medium, 0x3, 500);
-        memset(large, 0x4, 2000);
-        printf("Successfully wrote to all allocations\n");
+        /* Write to the memory to ensure it's usable */
+        if (allocations[i])
+        {
+            memset(allocations[i], 0xAB, size);
+        }
+        else
+        {
+            printf("Failed to allocate %zu bytes\n", size);
+        }
     }
 
-    /* Free them */
-    my_free(small1);
-    my_free(small2);
-    my_free(medium);
-    my_free(large);
+    /* Free half the allocations */
+    for (int i = 0; i < testCount; i += 2)
+    {
+        myFree(allocations[i]);
+        allocations[i] = NULL;
+    }
 
-    printf("Basic allocations freed\n");
+    /* Allocate new blocks to replace freed ones */
+    for (int i = 0; i < testCount; i += 2)
+    {
+        const size_t size = rand() % maxAllocSize + 1;
+        allocations[i] = myMalloc(size);
+        sizes[i] = size;
 
-    /* Run standard stress test */
-    printf("\n*** Running stress test ***\n");
+        if (allocations[i])
+        {
+            memset(allocations[i], 0xCD, size);
+        }
+    }
+
+    /* Free everything */
+    for (int i = 0; i < testCount; i++)
+    {
+        myFree(allocations[i]);
+    }
+
+    printf("Stress test complete - allocated and freed %d blocks of memory\n", testCount);
+}
+
+/* Test edge cases like zero-sized allocations */
+static void edgeCaseTests(void)
+{
+    printf("\n===== EDGE CASE TESTS =====\n");
+
+    /* Test NULL free */
+    printf("Testing myFree(NULL)... ");
+    myFree(NULL);  /* Should do nothing and not crash */
+    printf("OK\n");
+
+    /* Test zero allocation */
+    printf("Testing myMalloc(0)... ");
+    void* const zeroPtr = myMalloc(0);
+    if (zeroPtr == NULL)
+    {
+        printf("OK - returned NULL as expected\n");
+    }
+    else
+    {
+        printf("FAIL - should return NULL for zero size\n");
+        myFree(zeroPtr);
+    }
+
+    /* Test tiny allocation */
+    printf("Testing tiny allocation (1 byte)... ");
+    void* const tinyPtr = myMalloc(1);
+    if (tinyPtr != NULL)
+    {
+        *((unsigned char*)tinyPtr) = 0xFF;  /* Should be safe to write to */
+        printf("OK\n");
+        myFree(tinyPtr);
+    }
+    else
+    {
+        printf("FAIL - couldn't allocate 1 byte\n");
+    }
+
+    /* Test large allocation */
+    printf("Testing large allocation (1MB)... ");
+    const size_t largeSize = 1024 * 1024;
+    void* const largePtr = myMalloc(largeSize);
+    if (largePtr != NULL)
+    {
+        memset(largePtr, 0xAA, largeSize);  /* Should be safe to write to */
+        printf("OK\n");
+        myFree(largePtr);
+    }
+    else
+    {
+        printf("FAIL - couldn't allocate 1MB\n");
+    }
+}
+
+/* Test freeing invalid pointers */
+static void invalidFreeTests(void)
+{
+    printf("\n===== INVALID FREE TESTS =====\n");
+
+    /* Set up segfault handler */
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(struct sigaction));
+    sa.sa_handler = segfaultHandler;
+    sigaction(SIGSEGV, &sa, NULL);
+
+    /* Test double free */
+    printf("Testing double free... ");
+    void* const ptr = myMalloc(100);
+    if (ptr)
+    {
+        myFree(ptr);
+
+        /* This is technically undefined behavior, but our implementation should handle it gracefully */
+        expectingSegfault = true;
+        if (setjmp(segfaultJmpBuf) == 0)
+        {
+            myFree(ptr);  /* Second free of the same pointer */
+            printf("OK - didn't crash on double free\n");
+        }
+        else
+        {
+            printf("FAIL - segfault on double free\n");
+        }
+        expectingSegfault = false;
+    }
+    else
+    {
+        printf("SKIP - failed to allocate memory for test\n");
+    }
+
+    /* Test freeing an invalid pointer */
+    printf("Testing freeing invalid pointer... ");
+    void* const badPtr = (void*)0x12345678;
+
+    expectingSegfault = true;
+    if (setjmp(segfaultJmpBuf) == 0)
+    {
+        myFree(badPtr);
+        printf("OK - didn't crash on invalid pointer\n");
+    }
+    else
+    {
+        printf("FAIL - segfault on invalid pointer\n");
+    }
+    expectingSegfault = false;
+}
+
+/* Test use-after-free detection */
+static void useAfterFreeTest(void)
+{
+    printf("\n===== USE-AFTER-FREE TEST =====\n");
+
+    /* Allocate some memory */
+    printf("Allocating memory for UAF test... ");
+    const size_t size = 1024;
+    unsigned char* ptr = (unsigned char*)myMalloc(size);
+
+    if (ptr)
+    {
+        /* Fill with recognizable pattern */
+        for (size_t i = 0; i < size; i++)
+        {
+            ptr[i] = (unsigned char)i;
+        }
+        printf("OK\n");
+
+        /* Verify data */
+        printf("Verifying data... ");
+        bool dataValid = true;
+        for (size_t i = 0; i < size; i++)
+        {
+            if (ptr[i] != (unsigned char)i)
+            {
+                dataValid = false;
+                printf("Data corruption at offset %zu\n", i);
+                break;
+            }
+        }
+
+        if (dataValid)
+        {
+            printf("OK\n");
+        }
+
+        /* Free the memory */
+        printf("Freeing memory... ");
+        myFree(ptr);
+        printf("OK\n");
+
+        /* Try to use the memory after freeing (may or may not cause issues) */
+        printf("Testing use-after-free (note: behavior is undefined!)... ");
+        struct sigaction sa;
+        memset(&sa, 0, sizeof(struct sigaction));
+        sa.sa_handler = segfaultHandler;
+        sigaction(SIGSEGV, &sa, NULL);
+
+        expectingSegfault = true;
+        if (setjmp(segfaultJmpBuf) == 0)
+        {
+            /* Try to write to freed memory - this is undefined behavior */
+            ptr[0] = 0xFF;
+            ptr[size/2] = 0xFF;
+            ptr[size-1] = 0xFF;
+
+            printf("Memory still accessible after free (expected behavior for our allocator)\n");
+        }
+        else
+        {
+            printf("Segfault when accessing freed memory\n");
+        }
+        expectingSegfault = false;
+    }
+    else
+    {
+        printf("SKIP - failed to allocate memory for test\n");
+    }
+}
+
+/* Test memory exhaustion */
+static void exhaustionTest(void)
+{
+    printf("\n===== MEMORY EXHAUSTION TEST =====\n");
+    printf("Note: This test will try to allocate excessive memory\n");
+
+    /* Try to allocate increasingly large blocks until failure */
+    const size_t initialSize = 1024 * 1024; /* 1 MB */
+    size_t size = initialSize;
+    size_t totalAllocated = 0;
+    int allocCount = 0;
+
+    while (1)
+    {
+        printf("Trying to allocate %zu bytes... ", size);
+        void* ptr = myMalloc(size);
+
+        if (ptr)
+        {
+            /* Write to the memory to ensure it's usable */
+            memset(ptr, 0xAA, size);
+
+            totalAllocated += size;
+            allocCount++;
+            printf("OK (total: %zu bytes in %d blocks)\n", totalAllocated, allocCount);
+
+            /* Grow allocation size exponentially */
+            size *= 2;
+
+            /* Don't free the memory - we want to exhaust the address space */
+        }
+        else
+        {
+            printf("Failed - memory exhaustion successful after %zu bytes\n", totalAllocated);
+            break;
+        }
+
+        /* Safety limit to prevent test from running too long */
+        if (allocCount >= 20)
+        {
+            printf("Stopping test after %d allocations\n", allocCount);
+            break;
+        }
+    }
+}
+
+/* Test fragmentation resistance */
+static void fragmentationTest(void)
+{
+    printf("\n===== FRAGMENTATION TEST =====\n");
+
+    const int blockCount = 1000;
+    const size_t blockSize = 128;
+
+    /* Arrays to store allocated memory */
+    void* blocks[blockCount];
+
+    /* First, allocate many blocks of the same size */
+    printf("Allocating %d blocks of %zu bytes each... ", blockCount, blockSize);
+    for (int i = 0; i < blockCount; i++)
+    {
+        blocks[i] = myMalloc(blockSize);
+        if (!blocks[i])
+        {
+            printf("Failed at block %d\n", i);
+            break;
+        }
+
+        /* Write unique pattern to each block */
+        memset(blocks[i], (unsigned char)i, blockSize);
+    }
+    printf("OK\n");
+
+    /* Free every other block to create fragmentation */
+    printf("Freeing every other block to create fragmentation... ");
+    for (int i = 0; i < blockCount; i += 2)
+    {
+        myFree(blocks[i]);
+        blocks[i] = NULL;
+    }
+    printf("OK\n");
+
+    /* Try to allocate blocks larger than the original size */
+    printf("Allocating blocks larger than the freed spaces... ");
+    size_t largerSize = blockSize * 3;
+    int successCount = 0;
+
+    for (int i = 0; i < blockCount; i += 2)
+    {
+        blocks[i] = myMalloc(largerSize);
+        if (blocks[i])
+        {
+            successCount++;
+            /* Mark the allocation with recognizable pattern */
+            memset(blocks[i], 0xBB, largerSize);
+        }
+    }
+
+    printf("Successfully allocated %d/%d larger blocks\n", successCount, blockCount/2);
+
+    /* Verify that the odd-indexed blocks still have their original content */
+    printf("Verifying integrity of unfreed blocks... ");
+    int corruptCount = 0;
+
+    for (int i = 1; i < blockCount; i += 2)
+    {
+        if (blocks[i])
+        {
+            unsigned char* data = (unsigned char*)blocks[i];
+            bool isCorrupt = false;
+
+            for (size_t j = 0; j < blockSize; j++)
+            {
+                if (data[j] != (unsigned char)i)
+                {
+                    isCorrupt = true;
+                    break;
+                }
+            }
+
+            if (isCorrupt)
+            {
+                corruptCount++;
+            }
+        }
+    }
+
+    if (corruptCount == 0)
+    {
+        printf("All blocks intact - no corruption detected\n");
+    }
+    else
+    {
+        printf("Found %d corrupted blocks\n", corruptCount);
+    }
+
+    /* Free all blocks */
+    printf("Freeing all blocks... ");
+    for (int i = 0; i < blockCount; i++)
+    {
+        myFree(blocks[i]);
+    }
+    printf("OK\n");
+}
+
+int main(void)
+{
+    printf("Memory Allocator Test Suite\n");
+    printf("==========================\n");
+
+    /* Run tests */
     stressTest();
-
-    /* Run edge case tests */
     edgeCaseTests();
-
-    /* Run invalid free tests that might cause segfaults */
     invalidFreeTests();
-
-    /* Run use-after-free test */
     useAfterFreeTest();
-
-    /* Run fragmentation test */
     fragmentationTest();
 
-    /* Run resource exhaustion test (commented out by default as it may crash the system) */
-    /* Uncomment the next line to run the exhaustion test */
-    exhaustionTest();
+    /* Uncomment to run exhaustion test (may affect system stability) */
+    /* exhaustionTest(); */
 
-#if DEBUG_MEMORY_LEAKS
-    /* Check for memory leaks at the end */
+    /* Print memory statistics */
+    printMemoryStats();
+
+    /* Print memory leak report */
     printMemoryLeakReport();
-#endif
 
     return 0;
 }

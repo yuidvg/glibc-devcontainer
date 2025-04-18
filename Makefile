@@ -1,73 +1,75 @@
+ifeq ($(HOSTTYPE),)
+HOSTTYPE := $(shell uname -m)_$(shell uname -s)
+endif
+
 CC = gcc
 CFLAGS = -Wall -Wextra -Werror -I./include
 CFLAGS_DEBUG = -g -std=c99
-SRC_DIR = src
-TEST_DIR = test
-OBJ_DIR = obj
-BIN_DIR = bin
 
-# Targets
-LIB_TARGET = $(BIN_DIR)/libmy_malloc.a
-TEST_TARGET = $(BIN_DIR)/test_my_malloc
-MAIN_TARGET = $(BIN_DIR)/my_malloc_demo
 
-# Source files
-LIB_SRCS = $(SRC_DIR)/my_malloc.c
-TEST_SRCS = $(TEST_DIR)/test_my_malloc.c
-MAIN_SRCS = $(SRC_DIR)/main.c
+# Src
+DIR_LIB = src
+SRCS = $(wildcard $(DIR_LIB)/*.c)
 
-# Object files
-LIB_OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(LIB_SRCS))
-TEST_OBJS = $(patsubst $(TEST_DIR)/%.c,$(OBJ_DIR)/test_%.o,$(TEST_SRCS))
-MAIN_OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(MAIN_SRCS))
+# Test
+DIR_TEST = test
+TEST_SRCS = $(wildcard $(DIR_TEST)/*.c)
+
+
+# Build
+DIR_BUILD = build
+
+# Object
+DIR_OBJ = $(DIR_BUILD)/obj
+
+DIR_OBJ_LIB = $(DIR_OBJ)/lib
+OBJS_LIB = $(patsubst $(DIR_LIB)/%.c,$(DIR_OBJ_LIB)/$(DIR_LIB)/%.o,$(SRCS))
+
+DIR_OBJ_TEST = $(DIR_OBJ)/test
+OBJS_TEST = $(patsubst $(DIR_TEST)/%.c,$(DIR_OBJ_TEST)/$(DIR_TEST)/%.o,$(TEST_SRCS))
+
+# Bin
+DIR_BIN = $(DIR_BUILD)/bin
+
+BIN_LIB = $(DIR_BIN)/libft_malloc_$(HOSTTYPE).so
+BIN_LIB_SYM = $(DIR_BIN)/libft_malloc.so
+
+BIN_TEST = $(DIR_BIN)/test.out
+
 
 # Directories
-DIRS = $(OBJ_DIR) $(BIN_DIR)
-
-# Create directories
-$(OBJ_DIR) $(BIN_DIR):
+$(DIR_BUILD) $(DIR_OBJ) $(DIR_BIN):
 	mkdir -p $@
 
-# Default target
-all: $(DIRS) $(LIB_TARGET) $(TEST_TARGET) $(MAIN_TARGET)
-
-# Compile library source files
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+# Object files
+$(DIR_OBJ_LIB)/%.o: $(DIR_LIB)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Compile test source files
-$(OBJ_DIR)/test_%.o: $(TEST_DIR)/%.c
+$(DIR_OBJ_TEST)/%.o: $(DIR_TEST)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Build static library
-$(LIB_TARGET): $(LIB_OBJS)
-	ar rcs $@ $^
 
-# Build test executable
-$(TEST_TARGET): $(TEST_OBJS) $(LIB_TARGET)
-	$(CC) $(CFLAGS) -o $@ $< -L$(BIN_DIR) -lmy_malloc
+# Bin
+$(BIN_LIB): $(OBJS_LIB)
+	$(CC) -shared -o $@ $^
+	ln -sf $(notdir $@) $(BIN_LIB_SYM)
+$(BIN_TEST): $(OBJS_LIB) $(OBJS_TEST) $(BIN_LIB)
+	$(CC) $(CFLAGS) -o $@ $< -L$(DIR_BIN) -lmyMalloc
 
-# Build main program
-$(MAIN_TARGET): $(MAIN_OBJS) $(LIB_TARGET)
-	$(CC) $(CFLAGS) -o $@ $< -L$(BIN_DIR) -lmy_malloc
+$(BIN_TEST): $(OBJS_LIB) $(OBJS_TEST) $(BIN_LIB)
+	$(CC) $(CFLAGS) -o $@ $< -L$(DIR_BIN) -lmyMalloc
 
-# Run main program
-run: $(MAIN_TARGET)
-	./$(MAIN_TARGET)
+all: $(DIRS) $(BIN_LIB) $(BIN_TEST) $(MAIN_TARGET)
 
-# Run tests
-test: $(TEST_TARGET)
-	./$(TEST_TARGET)
+test: $(BIN_TEST)
+	./$(BIN_TEST)
 
-# Clean build files
 clean:
-	rm -rf $(OBJ_DIR) $(BIN_DIR)
+	rm -rf $(DIR_OBJ) $(DIR_BIN)
 
-# Clean and rebuild
 re: clean all
 
-# Run Valgrind memory check
-leak: $(TEST_TARGET)
-	valgrind --leak-check=full --show-leak-kinds=all ./$(TEST_TARGET)
+leak: $(BIN_TEST)
+	valgrind --leak-check=full --show-leak-kinds=all ./$(BIN_TEST)
 
-.PHONY: all clean rebuild test leak run
+.PHONY: all clean rebuild test leak
