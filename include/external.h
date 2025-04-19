@@ -1,5 +1,6 @@
 #pragma once
 
+#define _DEFAULT_SOURCE
 #include <errno.h>
 #include <setjmp.h>
 #include <signal.h>
