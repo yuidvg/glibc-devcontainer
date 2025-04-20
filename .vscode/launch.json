@@ -35,6 +35,41 @@
                 "/build/buildd/glibc-2.35": "/usr/src/glibc/glibc-2.35",
                 "/usr/src/debug/glibc-2.35": "/usr/src/glibc/glibc-2.35"
             },
+        },
+        {
+            "name": "(gdb) Launch on current file",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/${relativeFile}-debug.out",
+            "args": [
+                "${input:programArgs}"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "preLaunchTask": "build-current-file",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+    ],
+    "inputs": [
+        {
+            "id": "programArgs",
+            "type": "promptString",
+            "description": "Enter command line arguments",
+            "default": ""
         }
     ]
 }

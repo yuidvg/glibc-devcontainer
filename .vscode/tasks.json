@@ -12,6 +12,15 @@
             "problemMatcher": [
                 "$gcc"
             ]
+        },
+        {
+            "label": "build-current-file",
+            "type": "shell",
+            "command": "mkdir -p ${workspaceFolder}/build/bin/${relativeFileDirname} && gcc -g3 -O0 -I ${workspaceFolder}/include ${file} -o ${workspaceFolder}/build/bin/${relativeFile}-debug.out",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
 }
