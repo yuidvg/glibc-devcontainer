@@ -1,4 +1,5 @@
 #pragma once
+
 /**
  * @file myMalloc.h
  * @brief Memory allocator implementation with pre-allocated zones.
@@ -8,10 +9,13 @@
  * handling strategies for each.
  */
 
+#include <stdlib.h>
+
 /* Function prototypes - implementation functions */
-void *ftMalloc(size_t size);
 void ftFree(void *ptr);
+void *ftMalloc(size_t size);
 void *ftRealloc(void *ptr, size_t size);
+
 void show_alloc_mem(void);
 
 /* System override functions */

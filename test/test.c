@@ -1,12 +1,5 @@
-#include <setjmp.h>
-#include <signal.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
 
-#include "../include/my_malloc.h"
+#include "test.h"
 
 /* For catching segfaults in tests */
 static jmp_buf segfaultJmpBuf;
