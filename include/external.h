@@ -11,5 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/resource.h>
 #include <time.h>
 #include <unistd.h>
+
+#include "libft.h"
