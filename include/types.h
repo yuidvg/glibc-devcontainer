@@ -10,25 +10,29 @@ typedef struct
     const bool isFree;     /* Whether this block is free */
 } BlockHeader;
 
-/* Zone types */
-typedef enum
-{
-    ZONE_TINY,
-    ZONE_SMALL,
-    ZONE_LARGE
-} ZoneType;
-
-/* Linked list of memory zones */
-typedef struct Zone
-{
-    const ZoneType type;
-    const size_t size;
-    struct Zone *next;
-} Zone;
-
 /* Result type for allocation functions */
 typedef struct
 {
     const bool succeeded;
-    void *ptr;
-} ResultAlloc;
+    void *const allocatedMemoryAddress;
+} AllocResult;
+
+typedef struct
+{
+
+    size_t mchunk_prev_size; /* Size of previous chunk (if free).  */
+    size_t mchunk_size;      /* Size in bytes, including overhead. */
+
+    struct chunk *fd; /* double links -- used only if free. */
+    struct chunk *bk;
+
+    /* Only used for large blocks: pointer to next larger size.  */
+    struct chunk *fd_nextsize; /* double links -- used only if free. */
+    struct chunk *bk_nextsize;
+} Chunk;
+
+typedef struct
+{
+    Chunk *tiny;
+    Chunk *small;
+} PreallocatedZones;
