@@ -69,6 +69,8 @@ $(BIN_TEST): $(OBJS_TEST) $(BIN_LIB) | $(DIR_BIN)
 
 
 test: $(BIN_TEST)
+
+test-run: test
 	LD_LIBRARY_PATH=./$(DIR_BIN) ./$(BIN_TEST)
 
 clean:
@@ -79,4 +81,4 @@ re: clean all
 leak: $(BIN_TEST)
 	LD_LIBRARY_PATH=./$(DIR_BIN) valgrind --leak-check=full --show-leak-kinds=all ./$(BIN_TEST)
 
-.PHONY: all clean re test leak
+.PHONY: all clean re test test-run leak
