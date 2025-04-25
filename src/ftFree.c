@@ -1,76 +1,31 @@
 #include "all.h"
 
 /* Free memory previously allocated with myMalloc */
-void ftFree(void *ptr)
+void ftFree(const void *const mem)
 {
-    if (ptr != NULL)
+    if (mem != NULL)
     {
-        /* Get block header - it's right before the user's pointer */
-        BlockHeader *const blockHeader = ((BlockHeader *)ptr) - 1;
-
-        /* Mark the block as free */
-        blockHeader->isFree = true;
-
-        /* For large allocations, consider unmapping directly */
-        /* First find which zone this belongs to */
-        Zone *prevZone = NULL;
-        Zone *currentZone = largeZones;
-
-        while (currentZone != NULL)
+        const void *const chunkToFree = mem - sizeof(size_t);
+        const size_t chunkSize = *(size_t *)(chunkToFree);
+        const size_t memSize = chunkSize - sizeof(size_t);
+        if (memSize <= SMALL_MAX_SIZE) // tiny/small chunk
         {
-            const size_t zoneStart = (size_t)currentZone;
-            const size_t zoneEnd = zoneStart + currentZone->size;
-
-            if ((size_t)blockHeader >= zoneStart && (size_t)blockHeader < zoneEnd)
-            {
-                /* This block is part of a large zone - unmap it */
-                if (prevZone == NULL)
-                {
-                    largeZones = currentZone->next;
-                }
-                else
-                {
-                    prevZone->next = currentZone->next;
-                }
-
-                munmap(currentZone, currentZone->size);
-                return;
-            }
-
-            prevZone = currentZone;
-            currentZone = currentZone->next;
+            const FreeChunk *const freeChunk = (FreeChunk *)(chunkToFree);
+            addChunkToChunks((FreeChunk *const)freeChunk,
+                             (FreeChunk **const)(memSize <= TINY_MAX_SIZE ? &preallocatedZones.tinyFreeChunks
+                                                                                : &preallocatedZones.smallFreeChunks));
+            printf("tiny/small chunk freed successfully\n");
         }
-
-        /* For tiny zones, coalesce adjacent free blocks */
-        currentZone = tinyZones;
-        while (currentZone != NULL)
+        else // large chunk
         {
-            const size_t zoneStart = (size_t)currentZone;
-            const size_t zoneEnd = zoneStart + currentZone->size;
-
-            if ((size_t)blockHeader >= zoneStart && (size_t)blockHeader < zoneEnd)
+            if (unallocateMemory(chunkToFree, chunkSize))
             {
-                coalesceZone(currentZone);
-                return;
+                printf("large chunk freed successfully\n");
             }
-
-            currentZone = currentZone->next;
-        }
-
-        /* For small zones, also coalesce adjacent free blocks */
-        currentZone = smallZones;
-        while (currentZone != NULL)
-        {
-            const size_t zoneStart = (size_t)currentZone;
-            const size_t zoneEnd = zoneStart + currentZone->size;
-
-            if ((size_t)blockHeader >= zoneStart && (size_t)blockHeader < zoneEnd)
+            else
             {
-                coalesceZone(currentZone);
-                return;
+                printf("large chunk freeing failed\n");
             }
-
-            currentZone = currentZone->next;
         }
     }
 }

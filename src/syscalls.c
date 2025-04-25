@@ -10,9 +10,9 @@ AllocResult allocateMemory(const size_t size)
     return (AllocResult){.succeeded = true, .allocatedMemoryAddress = ptr};
 }
 
-bool unallocateMemory(void *const ptr, const size_t size)
+bool unallocateMemory(const void *const ptr, const size_t size)
 {
-    if (munmap(ptr, size) == -1)
+    if (munmap((void *const)ptr, size) == -1)
     {
         return false;
     }
