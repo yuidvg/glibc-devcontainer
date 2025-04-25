@@ -8,3 +8,5 @@
 
 #define TINY_MAX_SIZE 128   /* n: max size for tiny allocations */
 #define SMALL_MAX_SIZE 1024 /* m: max size for small allocations */
+
+#define CHUNK_HEADER_SIZE sizeof(size_t)

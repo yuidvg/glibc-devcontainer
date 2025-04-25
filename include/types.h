@@ -22,3 +22,9 @@ typedef struct
     FreeChunk *tinyFreeChunks;
     FreeChunk *smallFreeChunks;
 } PreallocatedZones;
+
+typedef struct
+{
+    const FreeChunk *const main;
+    const FreeChunk *const rest;
+} SplitChunks;

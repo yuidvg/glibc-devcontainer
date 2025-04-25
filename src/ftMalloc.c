@@ -42,8 +42,65 @@ __attribute__((destructor)) void cleanupPreAllocatedZones()
 }
 
 /* The main memory allocation function */
-void *ftMalloc(const size_t size)
+void *ftMalloc(const size_t memSize)
 {
-    (void)size;
-    return (NULL);
+    const size_t chunkSize = memSize + CHUNK_HEADER_SIZE;
+    if (memSize <= SMALL_MAX_SIZE)
+    {
+        if (preallocatedZones.smallFreeChunks != NULL && preallocatedZones.tinyFreeChunks != NULL &&
+            preallocatedZones.tinyFreeChunks->chunkSize == TINY_ZONE_SIZE &&
+            preallocatedZones.smallFreeChunks->chunkSize == SMALL_ZONE_SIZE)
+        {
+            const FreeChunk *const freeChunksToSearch = memSize <= TINY_MAX_SIZE ? &preallocatedZones.tinyFreeChunks : &preallocatedZones.smallFreeChunks;
+            const FreeChunk *const freeChunk = findChunkBySizeInChunks(chunkSize, freeChunksToSearch);
+            if (freeChunk != NULL)
+            {
+                removeChunkFromChunks(freeChunk, &freeChunksToSearch);
+                return (freeChunk + CHUNK_HEADER_SIZE);
+            }
+            else
+            {
+                const FreeChunk *const largerFreeChunk = findLargerChunkInChunks(chunkSize, freeChunksToSearch);
+                if (largerFreeChunk != NULL)
+                {
+                    if (largerFreeChunk->chunkSize > chunkSize + CHUNK_HEADER_SIZE) // is largerFreeChunk big enough to split?
+                    { // yes - split it
+                        const SplitChunks splitChunks = splitChunk(largerFreeChunk, chunkSize);
+                        removeChunkFromChunks(splitChunks.main, &freeChunksToSearch);
+                        return (splitChunks.main + CHUNK_HEADER_SIZE);
+                    }
+                    else // no - just use the largerFreeChunk
+                    {
+                        removeChunkFromChunks(largerFreeChunk, &freeChunksToSearch);
+                        return (largerFreeChunk + CHUNK_HEADER_SIZE);
+                    }
+                }
+                else
+                {
+                    perror("No free chunk found");
+                    return (NULL);
+                }
+            }
+        }
+        else
+        {
+            perror("Preallocated zones are not initialized correctly");
+            return (NULL);
+        }
+    }
+    else
+    {
+        const AllocResult allocResult = allocateMemory(chunkSize);
+        if (allocResult.succeeded)
+        {
+            size_t *chunkSizeMutablePointer = (size_t *)allocResult.allocatedMemoryAddress;
+            *chunkSizeMutablePointer = chunkSize;
+            return (allocResult.allocatedMemoryAddress + CHUNK_HEADER_SIZE);
+        }
+        else
+        {
+            perror("Failed to allocate memory for ftMalloc");
+            return (NULL);
+        }
+    }
 }
