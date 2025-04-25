@@ -45,10 +45,13 @@ static size_t	delimd_len(char const *s, char c)
 
 static char	**free_array(char **str, size_t i)
 {
-	while (i >= 0)
+	size_t index;
+
+	index = 0;
+	while (index < i)
 	{
-		free(str[i]);
-		i--;
+		free(str[index]);
+		index++;
 	}
 	free(str);
 	return (NULL);
