@@ -1,11 +1,11 @@
 #include "all.h"
 
 // Build a lookup table of free chunks for quick membership testing
-FreeChunksLookup buildFreeChunksLookup(const FreeChunk *const freeChunks)
+FreeChunksLookup buildFreeChunksLookup(const Chunk *const freeChunks)
 {
 	FreeChunksLookup lookup = { .count = 0 };
 
-	const FreeChunk *current = freeChunks;
+	const Chunk *current = freeChunks;
 	while (current != NULL && lookup.count < 1024)
 	{
 		lookup.chunks[lookup.count++] = current;

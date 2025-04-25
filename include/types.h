@@ -9,19 +9,21 @@ typedef struct
     void *const allocatedMemoryAddress;
 } AllocResult;
 
-typedef struct FreeChunk
+// pad
+typedef struct Chunk
 {
     size_t chunkSize; /* Size in bytes, including overhead. */
-
-    /* used only if free. */
-    struct FreeChunk *nextChunk;
-} FreeChunk;
+    size_t padSize;   /* Size of padding to align to MALLOC_ALIGNMENT. */
+    bool isFree;
+    struct Chunk *nextChunk;
+} Chunk;
+// -> mem
+// (payloads)
 
 typedef struct
 {
-    const FreeChunk *tinyFreeChunks;
-    const FreeChunk *smallFreeChunks;
-
+    const Chunk *tinyFreeChunks;
+    const Chunk *smallFreeChunks;
 } PreallocatedZones;
 
 typedef struct
@@ -32,6 +34,6 @@ typedef struct
 
 typedef struct
 {
-    const FreeChunk *const main;
-    const FreeChunk *const rest;
+    const Chunk *const main;
+    const Chunk *const rest;
 } SplitChunks;
