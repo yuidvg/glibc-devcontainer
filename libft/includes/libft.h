@@ -59,7 +59,6 @@ void	*ft_memcpy(void *dst, const void *src, size_t n);
 void	*ft_memmove(void *dst, const void *src, size_t len);
 
 //string
-char	*get_next_line(int fd);
 int		ft_atoi(const char *str);
 int		will_overflow(long num, int next);
 int		will_underflow(long num, int next);
