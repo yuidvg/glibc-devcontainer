@@ -1,8 +1,8 @@
 #include "all.h"
 
-const FreeChunk *findChunkInChunks(const FreeChunk *const chunkToFind, const FreeChunk *const *const chunks)
+const FreeChunk *findChunkInChunks(const FreeChunk *const chunkToFind, const FreeChunk *const chunks)
 {
-    const FreeChunk *current = *chunks;
+    const FreeChunk *current = chunks;
     while (current != NULL)
     {
         if (current == chunkToFind)
@@ -14,9 +14,9 @@ const FreeChunk *findChunkInChunks(const FreeChunk *const chunkToFind, const Fre
     return NULL;
 }
 
-const FreeChunk *findPreviousChunkInChunks(const FreeChunk *const chunkToFind, const FreeChunk *const *const chunks)
+const FreeChunk *findPreviousChunkInChunks(const FreeChunk *const chunkToFind, const FreeChunk *const chunks)
 {
-    const FreeChunk *current = *chunks;
+    const FreeChunk *current = chunks;
     while (current != NULL)
     {
         if (current->nextChunk == chunkToFind)
@@ -28,9 +28,9 @@ const FreeChunk *findPreviousChunkInChunks(const FreeChunk *const chunkToFind, c
     return NULL;
 }
 
-const FreeChunk *findChunkBySizeInChunks(const size_t chunkSizeToFind, const FreeChunk *const *const chunks)
+const FreeChunk *findChunkBySizeInChunks(const size_t chunkSizeToFind, const FreeChunk *const chunks)
 {
-    const FreeChunk *current = *chunks;
+    const FreeChunk *current = chunks;
     while (current != NULL)
     {
         if (current->chunkSize == chunkSizeToFind)
@@ -42,9 +42,9 @@ const FreeChunk *findChunkBySizeInChunks(const size_t chunkSizeToFind, const Fre
     return NULL;
 }
 
-const FreeChunk *findLargerChunkInChunks(const size_t standardChunkSize, const FreeChunk *const *const chunks)
+const FreeChunk *findLargerChunkInChunks(const size_t standardChunkSize, const FreeChunk *const chunks)
 {
-    const FreeChunk *current = *chunks;
+    const FreeChunk *current = chunks;
     while (current != NULL)
     {
         if (current->chunkSize > standardChunkSize)
@@ -56,21 +56,20 @@ const FreeChunk *findLargerChunkInChunks(const size_t standardChunkSize, const F
     return NULL;
 }
 
-
-void addChunkToChunks(FreeChunk *chunk, FreeChunk **const chunks)
+void addChunkToChunks(FreeChunk *chunk, FreeChunk **const headToChunks)
 {
-    chunk->nextChunk = *chunks;
-    *chunks = chunk;
+    chunk->nextChunk = *headToChunks;
+    *headToChunks = chunk;
 }
 
-bool removeChunkFromChunks(const FreeChunk *const chunkToRemove, const FreeChunk **const chunks)
+bool removeChunkFromChunks(const FreeChunk *const chunkToRemove, const FreeChunk **const headToChunks)
 {
-    if (chunks != NULL && *chunks != NULL)
+    if (headToChunks != NULL && *headToChunks != NULL)
     {
-        const FreeChunk *const foundChunk = findChunkInChunks(chunkToRemove, chunks);
+        const FreeChunk *const foundChunk = findChunkInChunks(chunkToRemove, *headToChunks);
         if (foundChunk != NULL)
         {
-            const FreeChunk *const previousChunk = findPreviousChunkInChunks(chunkToRemove, chunks);
+            const FreeChunk *const previousChunk = findPreviousChunkInChunks(chunkToRemove, *headToChunks);
             if (previousChunk != NULL)
             {
                 FreeChunk *const previousChunkMutable = (FreeChunk *const)previousChunk;
@@ -78,7 +77,7 @@ bool removeChunkFromChunks(const FreeChunk *const chunkToRemove, const FreeChunk
             }
             else
             {
-                *chunks = foundChunk->nextChunk;
+                *headToChunks = foundChunk->nextChunk;
             }
             return true;
         }
@@ -93,10 +92,20 @@ bool removeChunkFromChunks(const FreeChunk *const chunkToRemove, const FreeChunk
     }
 }
 
+void *offsetBytes(const void *const pointer, const size_t offset)
+{
+    const uint8_t *const baseBytes = (const uint8_t *const)pointer;
+
+    // one mutable local for the eventual return
+    void *resultPointer = (void *)(baseBytes + offset);
+
+    return resultPointer;
+}
+
 SplitChunks splitChunk(const FreeChunk *const chunkToSplit, const size_t sizeToCutout)
 {
     const size_t restSize = chunkToSplit->chunkSize - sizeToCutout;
-    FreeChunk *const restMutable = (FreeChunk *const)(chunkToSplit + sizeToCutout);
+    FreeChunk *const restMutable = (FreeChunk *const)offsetBytes(chunkToSplit, sizeToCutout);
     restMutable->chunkSize = restSize;
     restMutable->nextChunk = chunkToSplit->nextChunk;
     FreeChunk *const mainMutable = (FreeChunk *const)chunkToSplit;

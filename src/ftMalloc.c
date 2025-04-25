@@ -8,15 +8,18 @@ __attribute__((constructor)) void initializePreAllocatedZones()
     const AllocResult tinyZoneResult = allocateMemory(TINY_ZONE_SIZE);
     if (tinyZoneResult.succeeded)
     {
-        preallocatedZones.tinyFreeChunks = (FreeChunk *)tinyZoneResult.allocatedMemoryAddress;
-        preallocatedZones.tinyFreeChunks->chunkSize = TINY_ZONE_SIZE;
-        preallocatedZones.tinyFreeChunks->nextChunk = NULL;
+        FreeChunk *const tinyFreeChunksMutable = (FreeChunk *)tinyZoneResult.allocatedMemoryAddress;
+        tinyFreeChunksMutable->chunkSize = TINY_ZONE_SIZE;
+        tinyFreeChunksMutable->nextChunk = NULL;
+
+        preallocatedZones.tinyFreeChunks = tinyFreeChunksMutable;
         const AllocResult smallZoneResult = allocateMemory(SMALL_ZONE_SIZE);
         if (smallZoneResult.succeeded)
         {
-            preallocatedZones.smallFreeChunks = (FreeChunk *)smallZoneResult.allocatedMemoryAddress;
-            preallocatedZones.smallFreeChunks->chunkSize = SMALL_ZONE_SIZE;
-            preallocatedZones.smallFreeChunks->nextChunk = NULL;
+            FreeChunk *const smallFreeChunksMutable = (FreeChunk *)smallZoneResult.allocatedMemoryAddress;
+            smallFreeChunksMutable->chunkSize = SMALL_ZONE_SIZE;
+            smallFreeChunksMutable->nextChunk = NULL;
+            preallocatedZones.smallFreeChunks = smallFreeChunksMutable;
         }
         else
         {
@@ -47,32 +50,30 @@ void *ftMalloc(const size_t memSize)
     const size_t chunkSize = memSize + CHUNK_HEADER_SIZE;
     if (memSize <= SMALL_MAX_SIZE)
     {
-        if (preallocatedZones.smallFreeChunks != NULL && preallocatedZones.tinyFreeChunks != NULL &&
-            preallocatedZones.tinyFreeChunks->chunkSize == TINY_ZONE_SIZE &&
-            preallocatedZones.smallFreeChunks->chunkSize == SMALL_ZONE_SIZE)
+        if (preallocatedZones.smallFreeChunks != NULL && preallocatedZones.tinyFreeChunks != NULL)
         {
-            const FreeChunk *const freeChunksToSearch = memSize <= TINY_MAX_SIZE ? &preallocatedZones.tinyFreeChunks : &preallocatedZones.smallFreeChunks;
-            const FreeChunk *const freeChunk = findChunkBySizeInChunks(chunkSize, freeChunksToSearch);
+            const FreeChunk *const *const freeChunksToSearchPointer = memSize <= (size_t)TINY_MAX_SIZE ? &preallocatedZones.tinyFreeChunks : &preallocatedZones.smallFreeChunks;
+            const FreeChunk *const freeChunk = findChunkBySizeInChunks(chunkSize, *freeChunksToSearchPointer);
             if (freeChunk != NULL)
             {
-                removeChunkFromChunks(freeChunk, &freeChunksToSearch);
-                return (freeChunk + CHUNK_HEADER_SIZE);
+                removeChunkFromChunks(freeChunk, (const FreeChunk **const)freeChunksToSearchPointer);
+                return ((void *)(freeChunk + CHUNK_HEADER_SIZE));
             }
             else
             {
-                const FreeChunk *const largerFreeChunk = findLargerChunkInChunks(chunkSize, freeChunksToSearch);
+                const FreeChunk *const largerFreeChunk = findLargerChunkInChunks(chunkSize, *freeChunksToSearchPointer);
                 if (largerFreeChunk != NULL)
                 {
                     if (largerFreeChunk->chunkSize > chunkSize + CHUNK_HEADER_SIZE) // is largerFreeChunk big enough to split?
                     { // yes - split it
                         const SplitChunks splitChunks = splitChunk(largerFreeChunk, chunkSize);
-                        removeChunkFromChunks(splitChunks.main, &freeChunksToSearch);
-                        return (splitChunks.main + CHUNK_HEADER_SIZE);
+                        removeChunkFromChunks(splitChunks.main, (const FreeChunk **const)freeChunksToSearchPointer);
+                        return ((void *)splitChunks.main + CHUNK_HEADER_SIZE);
                     }
                     else // no - just use the largerFreeChunk
                     {
-                        removeChunkFromChunks(largerFreeChunk, &freeChunksToSearch);
-                        return (largerFreeChunk + CHUNK_HEADER_SIZE);
+                        removeChunkFromChunks(largerFreeChunk, (const FreeChunk **const)freeChunksToSearchPointer);
+                        return ((void *)(largerFreeChunk + CHUNK_HEADER_SIZE));
                     }
                 }
                 else

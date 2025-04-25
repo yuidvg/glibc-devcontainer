@@ -19,8 +19,8 @@ typedef struct FreeChunk
 
 typedef struct
 {
-    FreeChunk *tinyFreeChunks;
-    FreeChunk *smallFreeChunks;
+    const FreeChunk * tinyFreeChunks;
+    const FreeChunk * smallFreeChunks;
 } PreallocatedZones;
 
 typedef struct
