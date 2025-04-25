@@ -15,22 +15,17 @@ typedef struct Chunk
     size_t chunkSize; /* Size in bytes, including overhead. */
     size_t padSize;   /* Size of padding to align to MALLOC_ALIGNMENT. */
     bool isFree;
-    struct Chunk *nextChunk;
+    const struct Chunk *nextChunk;
 } Chunk;
 // -> mem
-// (payloads)
+// payloads)
 
 typedef struct
 {
-    const Chunk *tinyFreeChunks;
-    const Chunk *smallFreeChunks;
-} PreallocatedZones;
-
-typedef struct
-{
-    const PreallocatedZones preallocatedZones;
-    allocated;
-} Allocator;
+    const Chunk *tinyChunks;
+    const Chunk *smallChunks;
+    const Chunk *largeChunks;
+} Global;
 
 typedef struct
 {

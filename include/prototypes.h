@@ -16,4 +16,4 @@ void *offsetBytes(const void *const pointer, const size_t offset);
 SplitChunks splitChunk(const Chunk *const chunkToSplit, const size_t sizeToCutout);
 
 // variables
-extern PreallocatedZones preallocatedZones;
+extern Global global;

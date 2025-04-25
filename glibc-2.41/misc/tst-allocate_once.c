@@ -29,7 +29,7 @@ allocate_string (void *closure)
   return xstrdup (closure);
 }
 
-/* Allocation and deallocation functions which are not expected to be
+/* Global and deallocation functions which are not expected to be
    called.  */
 
 static void *

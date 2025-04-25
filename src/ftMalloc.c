@@ -1,6 +1,6 @@
 #include "all.h"
 
-PreallocatedZones preallocatedZones;
+Global global;
 
 __attribute__((constructor)) void initializePreAllocatedZones()
 {
@@ -12,14 +12,14 @@ __attribute__((constructor)) void initializePreAllocatedZones()
         tinyFreeChunksMutable->chunkSize = TINY_ZONE_SIZE;
         tinyFreeChunksMutable->nextChunk = NULL;
 
-        preallocatedZones.tinyFreeChunks = tinyFreeChunksMutable;
+        global.tinyChunks = tinyFreeChunksMutable;
         const AllocResult smallZoneResult = allocateMemory(SMALL_ZONE_SIZE);
         if (smallZoneResult.succeeded)
         {
             Chunk *const smallFreeChunksMutable = (Chunk *)smallZoneResult.allocatedMemoryAddress;
             smallFreeChunksMutable->chunkSize = SMALL_ZONE_SIZE;
             smallFreeChunksMutable->nextChunk = NULL;
-            preallocatedZones.smallFreeChunks = smallFreeChunksMutable;
+            global.smallChunks = smallFreeChunksMutable;
         }
         else
         {
@@ -34,13 +34,13 @@ __attribute__((constructor)) void initializePreAllocatedZones()
 
 __attribute__((destructor)) void cleanupPreAllocatedZones()
 {
-    if (preallocatedZones.tinyFreeChunks != NULL)
+    if (global.tinyChunks != NULL)
     {
-        unallocateMemory(preallocatedZones.tinyFreeChunks, TINY_ZONE_SIZE);
+        unallocateMemory(global.tinyChunks, TINY_ZONE_SIZE);
     }
-    if (preallocatedZones.smallFreeChunks != NULL)
+    if (global.smallChunks != NULL)
     {
-        unallocateMemory(preallocatedZones.smallFreeChunks, SMALL_ZONE_SIZE);
+        unallocateMemory(global.smallChunks, SMALL_ZONE_SIZE);
     }
 }
 
@@ -50,9 +50,9 @@ void *ftMalloc(const size_t memSize)
     const size_t chunkSize = memSize + CHUNK_HEADER_SIZE;
     if (memSize <= SMALL_MAX_SIZE)
     {
-        if (preallocatedZones.smallFreeChunks != NULL && preallocatedZones.tinyFreeChunks != NULL)
+        if (global.smallChunks != NULL && global.tinyChunks != NULL)
         {
-            const Chunk *const *const freeChunksToSearchPointer = memSize <= (size_t)TINY_MAX_SIZE ? &preallocatedZones.tinyFreeChunks : &preallocatedZones.smallFreeChunks;
+            const Chunk *const *const freeChunksToSearchPointer = memSize <= (size_t)TINY_MAX_SIZE ? &global.tinyChunks : &global.smallChunks;
             const Chunk *const freeChunk = findChunkBySizeInChunks(chunkSize, *freeChunksToSearchPointer);
             if (freeChunk != NULL)
             {

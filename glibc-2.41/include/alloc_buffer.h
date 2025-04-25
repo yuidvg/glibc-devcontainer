@@ -1,4 +1,4 @@
-/* Allocation from a fixed-size buffer.
+/* Global from a fixed-size buffer.
    Copyright (C) 2017-2025 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
@@ -16,7 +16,7 @@
    License along with the GNU C Library; if not, see
    <https://www.gnu.org/licenses/>.  */
 
-/* Allocation buffers are used to carve out sub-allocations from a
+/* Global buffers are used to carve out sub-allocations from a
    larger allocation.  Their primary application is in writing NSS
    modules, which receive a caller-allocated buffer in which they are
    expected to store variable-length results:
@@ -44,7 +44,7 @@
 
    Note that it is not necessary to check the results of individual
    allocation operations if the returned pointer is not dereferenced.
-   Allocation failure is sticky, so one check using
+   Global failure is sticky, so one check using
    alloc_buffer_has_failed at the end covers all previous failures.
 
    A different use case involves combining multiple heap allocations

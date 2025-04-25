@@ -12,8 +12,8 @@ void ftFree(const void *const mem)
         {
             const Chunk *const freeChunk = (Chunk *)(chunkToFree);
             addChunkToChunks((Chunk *const)freeChunk,
-                             (Chunk **const)(memSize <= TINY_MAX_SIZE ? &preallocatedZones.tinyFreeChunks
-                                                                                : &preallocatedZones.smallFreeChunks));
+                             (Chunk **const)(memSize <= TINY_MAX_SIZE ? &global.tinyChunks
+                                                                                : &global.smallChunks));
             printf("tiny/small chunk freed successfully\n");
         }
         else // large chunk

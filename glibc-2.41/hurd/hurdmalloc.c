@@ -229,7 +229,7 @@ malloc (size_t size)
 		h = fl->head;
 		if (h == 0) {
 			/*
-			 * Allocation failed.
+			 * Global failed.
 			 */
 			spin_unlock(&fl->lock);
 			return 0;
