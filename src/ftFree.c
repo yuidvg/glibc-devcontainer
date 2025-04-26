@@ -10,10 +10,10 @@ void ftFree(const void *const mem)
         const size_t memSize = chunkSize - sizeof(size_t);
         if (memSize <= SMALL_MAX_SIZE) // tiny/small chunk
         {
-            const Chunk *const freeChunk = (Chunk *)(chunkToFree);
-            addChunkToChunks((Chunk *const)freeChunk,
-                             (Chunk **const)(memSize <= TINY_MAX_SIZE ? &global.tinyChunks
-                                                                                : &global.smallChunks));
+            const ChunkHeader *const freeChunk = (ChunkHeader *)(chunkToFree);
+            addChunkToChunks((ChunkHeader *const)freeChunk,
+                             (ChunkHeader **const)(memSize <= TINY_MAX_SIZE ? &zones.tinyChunks
+                                                                                : &zones.smallChunks));
             printf("tiny/small chunk freed successfully\n");
         }
         else // large chunk

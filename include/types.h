@@ -9,26 +9,30 @@ typedef struct
     void *const allocatedMemoryAddress;
 } AllocResult;
 
-// pad
-typedef struct Chunk
+// pad (<= MALLOC_ALIGN_MASK)
+typedef struct ChunkHeader
 {
-    size_t chunkSize; /* Size in bytes, including overhead. */
+    size_t chunkSize; /* Size in bytes, including overhead(header + pad + payload). */
     size_t padSize;   /* Size of padding to align to MALLOC_ALIGNMENT. */
     bool isFree;
-    const struct Chunk *nextChunk;
-} Chunk;
-// -> mem
-// payloads)
+    const struct ChunkHeader *nextChunkHeader;
+} ChunkHeader;
+// mem (should be aligned to MALLOC_ALIGNMENT) ->
+// (payloads)
+
+// variables
+typedef struct
+{
+    const ChunkHeader *tinyChunks;
+    const ChunkHeader *smallChunks;
+    const ChunkHeader *largeChunks;
+} Zones;
+
+extern Zones zones;
+
 
 typedef struct
 {
-    const Chunk *tinyChunks;
-    const Chunk *smallChunks;
-    const Chunk *largeChunks;
-} Global;
-
-typedef struct
-{
-    const Chunk *const main;
-    const Chunk *const rest;
+    const ChunkHeader *const main;
+    const ChunkHeader *const rest;
 } SplitChunks;
