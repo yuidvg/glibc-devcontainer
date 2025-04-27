@@ -19,5 +19,5 @@
 	},
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	"remoteUser": "root",
-	"postCreateCommand": "apt update && apt install -y gdb gawk bison make gcc texinfo libc6-dbg"
+	"postCreateCommand": "apt update && apt install -y valgrind gdb gawk bison make gcc texinfo libc6-dbg"
 }

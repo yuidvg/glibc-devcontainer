@@ -1,5 +1,4 @@
 #pragma once
-#include "prototypes.h"
-#include "types.h"
-#include "constants.h"
+#include "defines.h"
 #include "external.h"
+#include "prototypes.h"

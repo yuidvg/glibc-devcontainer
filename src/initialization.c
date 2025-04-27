@@ -10,16 +10,22 @@ __attribute__((constructor)) void initializePreAllocatedZones()
     {
         // Initialize the tiny zone
         zones.tiny.base = tinyZoneResult.allocatedMemoryAddress;
-        zones.tiny.zoneSize = TINY_ZONE_SIZE;
+        zones.tiny.baseSize = TINY_ZONE_SIZE;
         zones.tiny.frontPadSize = distanceToNextAlignment(tinyZoneResult.allocatedMemoryAddress);
+        ChunkHeader *const firstChunkInTinyZone = toFirstChunk(&zones.tiny);
+        firstChunkInTinyZone->payloadSize = zones.tiny.baseSize - zones.tiny.frontPadSize - CHUNK_HEADER_SIZE;
+        firstChunkInTinyZone->isFree = true;
 
         const AllocResult smallZoneResult = allocateMemory(SMALL_ZONE_SIZE);
         if (smallZoneResult.succeeded)
         {
             // Initialize the small zone
             zones.small.base = smallZoneResult.allocatedMemoryAddress;
-            zones.small.zoneSize = SMALL_ZONE_SIZE;
+            zones.small.baseSize = SMALL_ZONE_SIZE;
             zones.small.frontPadSize = distanceToNextAlignment(smallZoneResult.allocatedMemoryAddress);
+            ChunkHeader *const firstChunkInSmallZone = toFirstChunk(&zones.small);
+            firstChunkInSmallZone->payloadSize = zones.small.baseSize - zones.small.frontPadSize - CHUNK_HEADER_SIZE;
+            firstChunkInSmallZone->isFree = true;
         }
         else
         {
@@ -36,10 +42,10 @@ __attribute__((destructor)) void cleanupPreAllocatedZones()
 {
     if (zones.tiny.base != NULL)
     {
-        unallocateMemory(zones.tiny.base, zones.tiny.zoneSize);
+        unallocateMemory(zones.tiny.base, zones.tiny.baseSize);
     }
     if (zones.small.base != NULL)
     {
-        unallocateMemory(zones.small.base, zones.small.zoneSize);
+        unallocateMemory(zones.small.base, zones.small.baseSize);
     }
 }

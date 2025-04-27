@@ -7,12 +7,9 @@ void *ftMalloc(const size_t reqSize) // todo: pattern 0
     {
         if (zones.tiny.base != NULL && zones.small.base != NULL) // check if the zones are initialized
         {
-            const ChunkHeader *const firstChunk = reqSize <= (size_t)TINY_MAX_SIZE
-                                                      ? offsetBytes(zones.tiny.base, zones.tiny.frontPadSize)
-                                                      : offsetBytes(zones.small.base, zones.small.frontPadSize);
-            const size_t zoneSize = reqSize <= (size_t)TINY_MAX_SIZE ? zones.tiny.size : zones.small.size;
             const size_t needForPayload = alignUp(reqSize);
-            ChunkHeader *const exact = (ChunkHeader *const)findFreeChunk(needForPayload, firstChunk, zoneSize);
+            const Zone *const zone = reqSize <= (size_t)TINY_MAX_SIZE ? &zones.tiny : &zones.small;
+            ChunkHeader *const exact = (ChunkHeader *const)findFreeChunk(needForPayload, zone);
             if (exact != NULL)
             {
                 exact->isFree = false;
@@ -20,19 +17,20 @@ void *ftMalloc(const size_t reqSize) // todo: pattern 0
             }
             else
             {
-                ChunkHeader *const larger = findLargerFreeChunkInChunks(needForPayload, firstChunk, zoneSize);
-                if (larger != NULL)
+                ChunkHeader *const fittable = findFittableFreeChunk(needForPayload, zone);
+                if (fittable != NULL)
                 {
-                    if (larger->payloadSize >=
+                    if (fittable->payloadSize >=
                         needForPayload + CHUNK_MINIMUM_SIZE) // is largerFreeChunk big enough to split?
                     {                                        // yes - split it
-                        splitChunk(larger, needForPayload);
-                        return (chunkHeader2mem(larger));
+                        splitChunk(fittable, needForPayload);
+                        fittable->isFree = false;
+                        return (chunkHeader2mem(fittable));
                     }
                     else // no - just use the largerFreeChunk
                     {
-                        larger->isFree = false;
-                        return (chunkHeader2mem(larger));
+                        fittable->isFree = false;
+                        return (chunkHeader2mem(fittable));
                     }
                 }
                 else
@@ -53,8 +51,8 @@ void *ftMalloc(const size_t reqSize) // todo: pattern 0
         LargeChunkHeader *const largeChunkHeader = createLargeChunk(reqSize);
         if (largeChunkHeader != NULL)
         {
-            pushLargeChunk(largeChunkHeader, &zones.large);
-            return (largeChunkHeader2mem(largeChunkHeader));
+            push(largeChunkHeader);
+            return (largeChunk2Mem(largeChunkHeader));
         }
         else
         {
