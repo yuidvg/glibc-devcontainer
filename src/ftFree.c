@@ -1,31 +1,39 @@
 #include "all.h"
 
+static bool unallocateLargeChunk(const LargeChunkHeader *const victim)
+{
+    if (victim != NULL)
+    {
+        pop(victim);
+        if (unallocateMemory(toBase(victim), toBaseSize(victim)))
+            return true;
+    }
+    return false;
+}
+
 /* Free memory previously allocated with myMalloc */
 void ftFree(const void *const mem)
 {
     if (mem != NULL)
     {
-        const void *const chunkToFree = mem - sizeof(size_t);
-        const size_t chunkSize = *(size_t *)(chunkToFree);
-        const size_t memSize = chunkSize - sizeof(size_t);
-        if (memSize <= SMALL_MAX_SIZE) // tiny/small chunk
+        const LargeChunkHeader *const largeChunk = findLargeChunk(mem);
+        if (largeChunk != NULL) // large chunk
         {
-            const FreeChunk *const freeChunk = (FreeChunk *)(chunkToFree);
-            addChunkToChunks((FreeChunk *const)freeChunk,
-                             (FreeChunk **const)(memSize <= TINY_MAX_SIZE ? &preallocatedZones.tinyFreeChunks
-                                                                                : &preallocatedZones.smallFreeChunks));
-            printf("tiny/small chunk freed successfully\n");
+            unallocateLargeChunk(largeChunk);
         }
-        else // large chunk
+        else if (findChunk(mem, &zones.tiny) != NULL) // small chunk
         {
-            if (unallocateMemory(chunkToFree, chunkSize))
-            {
-                printf("large chunk freed successfully\n");
-            }
-            else
-            {
-                printf("large chunk freeing failed\n");
-            }
+            ChunkHeader *const chunk = findChunk(mem, &zones.tiny);
+            chunk->isFree = true;
+        }
+        else if (findChunk(mem, &zones.small) != NULL) // small chunk
+        {
+            ChunkHeader *const chunk = findChunk(mem, &zones.small);
+            chunk->isFree = true;
+        }
+        else
+        {
+            perror("Invalid memory address");
         }
     }
 }

@@ -573,7 +573,7 @@ typedef struct
   Idx str_idx;
   Idx node;
   state_array_t *path;
-  Idx alasts; /* Allocation size of LASTS.  */
+  Idx alasts; /* Global size of LASTS.  */
   Idx nlasts; /* The number of LASTS.  */
   re_sub_match_last_t **lasts;
 } re_sub_match_top_t;

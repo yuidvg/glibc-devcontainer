@@ -3,7 +3,7 @@ HOSTTYPE := $(shell uname -m)_$(shell uname -s)
 endif
 
 CC = gcc
-CFLAGS_DEBUG = -g -std=c99
+CFLAGS_DEBUG = -g -std=c11
 CFLAGS = -Wall -Wextra -Werror -I./include -I./libft/includes $(CFLAGS_DEBUG)
 
 # libft

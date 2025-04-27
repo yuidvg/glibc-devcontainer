@@ -1,79 +1,36 @@
 #include "all.h"
 
-PreallocatedZones preallocatedZones;
-
-__attribute__((constructor)) void initializePreAllocatedZones()
-{
-    // Allocate memory for the management struct itself using mmap
-    const AllocResult tinyZoneResult = allocateMemory(TINY_ZONE_SIZE);
-    if (tinyZoneResult.succeeded)
-    {
-        FreeChunk *const tinyFreeChunksMutable = (FreeChunk *)tinyZoneResult.allocatedMemoryAddress;
-        tinyFreeChunksMutable->chunkSize = TINY_ZONE_SIZE;
-        tinyFreeChunksMutable->nextChunk = NULL;
-
-        preallocatedZones.tinyFreeChunks = tinyFreeChunksMutable;
-        const AllocResult smallZoneResult = allocateMemory(SMALL_ZONE_SIZE);
-        if (smallZoneResult.succeeded)
-        {
-            FreeChunk *const smallFreeChunksMutable = (FreeChunk *)smallZoneResult.allocatedMemoryAddress;
-            smallFreeChunksMutable->chunkSize = SMALL_ZONE_SIZE;
-            smallFreeChunksMutable->nextChunk = NULL;
-            preallocatedZones.smallFreeChunks = smallFreeChunksMutable;
-        }
-        else
-        {
-            perror("Failed to allocate memory for the small zone in constructor");
-        }
-    }
-    else
-    {
-        perror("Failed to allocate memory for the management struct in constructor");
-    }
-}
-
-__attribute__((destructor)) void cleanupPreAllocatedZones()
-{
-    if (preallocatedZones.tinyFreeChunks != NULL)
-    {
-        unallocateMemory(preallocatedZones.tinyFreeChunks, TINY_ZONE_SIZE);
-    }
-    if (preallocatedZones.smallFreeChunks != NULL)
-    {
-        unallocateMemory(preallocatedZones.smallFreeChunks, SMALL_ZONE_SIZE);
-    }
-}
-
 /* The main memory allocation function */
-void *ftMalloc(const size_t memSize)
+void *ftMalloc(const size_t reqSize) // todo: pattern 0
 {
-    const size_t chunkSize = memSize + CHUNK_HEADER_SIZE;
-    if (memSize <= SMALL_MAX_SIZE)
+    if (reqSize <= SMALL_MAX_SIZE)
     {
-        if (preallocatedZones.smallFreeChunks != NULL && preallocatedZones.tinyFreeChunks != NULL)
+        if (zones.tiny.base != NULL && zones.small.base != NULL) // check if the zones are initialized
         {
-            const FreeChunk *const *const freeChunksToSearchPointer = memSize <= (size_t)TINY_MAX_SIZE ? &preallocatedZones.tinyFreeChunks : &preallocatedZones.smallFreeChunks;
-            const FreeChunk *const freeChunk = findChunkBySizeInChunks(chunkSize, *freeChunksToSearchPointer);
-            if (freeChunk != NULL)
+            const size_t needForPayload = alignUp(reqSize);
+            const Zone *const zone = reqSize <= (size_t)TINY_MAX_SIZE ? &zones.tiny : &zones.small;
+            ChunkHeader *const exact = (ChunkHeader *const)findFreeChunk(needForPayload, zone);
+            if (exact != NULL)
             {
-                removeChunkFromChunks(freeChunk, (const FreeChunk **const)freeChunksToSearchPointer);
-                return ((void *)(freeChunk + CHUNK_HEADER_SIZE));
+                exact->isFree = false;
+                return (chunkHeader2mem(exact));
             }
             else
             {
-                const FreeChunk *const largerFreeChunk = findLargerChunkInChunks(chunkSize, *freeChunksToSearchPointer);
-                if (largerFreeChunk != NULL)
+                ChunkHeader *const fittable = findFittableFreeChunk(needForPayload, zone);
+                if (fittable != NULL)
                 {
-                    if (largerFreeChunk->chunkSize > chunkSize + CHUNK_HEADER_SIZE) // is largerFreeChunk big enough to split?
-                    { // yes - split it
-                        const SplitChunks splitChunks = splitChunk(largerFreeChunk, chunkSize);
-                        removeChunkFromChunks(splitChunks.main, (const FreeChunk **const)freeChunksToSearchPointer);
-                        return ((void *)splitChunks.main + CHUNK_HEADER_SIZE);
+                    if (fittable->payloadSize >=
+                        needForPayload + CHUNK_MINIMUM_SIZE) // is largerFreeChunk big enough to split?
+                    {                                        // yes - split it
+                        splitChunk(fittable, needForPayload);
+                        fittable->isFree = false;
+                        return (chunkHeader2mem(fittable));
                     }
                     else // no - just use the largerFreeChunk
                     {
-                        removeChunkFromChunks(largerFreeChunk, (const FreeChunk **const)freeChunksToSearchPointer);
-                        return ((void *)(largerFreeChunk + CHUNK_HEADER_SIZE));
+                        fittable->isFree = false;
+                        return (chunkHeader2mem(fittable));
                     }
                 }
                 else
@@ -91,16 +48,15 @@ void *ftMalloc(const size_t memSize)
     }
     else
     {
-        const AllocResult allocResult = allocateMemory(chunkSize);
-        if (allocResult.succeeded)
+        LargeChunkHeader *const largeChunkHeader = createLargeChunk(reqSize);
+        if (largeChunkHeader != NULL)
         {
-            size_t *chunkSizeMutablePointer = (size_t *)allocResult.allocatedMemoryAddress;
-            *chunkSizeMutablePointer = chunkSize;
-            return (allocResult.allocatedMemoryAddress + CHUNK_HEADER_SIZE);
+            push(largeChunkHeader);
+            return (largeChunk2Mem(largeChunkHeader));
         }
         else
         {
-            perror("Failed to allocate memory for ftMalloc");
+            perror("Failed to create large chunkß");
             return (NULL);
         }
     }

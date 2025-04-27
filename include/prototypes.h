@@ -1,19 +1,43 @@
 #pragma once
-#include "types.h"
+#include "defines.h"
+
+#define offsetBytes(pointer, offset) ((void *)(((char *)(pointer) + (offset))))
+#define alignUp(reqSize) ((reqSize + MALLOC_ALIGN_MASK) & ~MALLOC_ALIGN_MASK)
+
+#define chunkHeader2mem(chunkHeaderPointer) ((void *)(offsetBytes(chunkHeaderPointer, sizeof(ChunkHeader))))
+#define mem2chunkHeader(memPointer) ((ChunkHeader *)(offsetBytes(memPointer, -sizeof(ChunkHeader))))
+
+#define mem2largeChunkHeader(memPointer) ((LargeChunkHeader *)(offsetBytes(memPointer, -sizeof(LargeChunkHeader))))
+
+#define reqsize2AllocationSize(reqsize) (MALLOC_ALIGN_MASK + sizeof(ChunkHeader) + (reqsize))
+#define reqsize2alignedChunkSize(reqsize) (sizeof(ChunkHeader) + (reqsize))
+#define isAligned(pointer) (((unsigned long)(pointer) & MALLOC_ALIGN_MASK) == 0)
+
+#define distanceToNextAlignment(pointer) (size_t)((-(uintptr_t)(pointer)) & MALLOC_ALIGN_MASK)
 
 // syscall wrappers
 AllocResult allocateMemory(const size_t size);
 bool unallocateMemory(const void *const ptr, const size_t size);
 
-// utils
-const FreeChunk *findChunkInChunks(const FreeChunk *const chunkToFind, const FreeChunk *const chunks);
-const FreeChunk *findPreviousChunkInChunks(const FreeChunk *const chunkToFind, const FreeChunk *const chunks);
-const FreeChunk *findChunkBySizeInChunks(const size_t chunkSizeToFind, const FreeChunk *const chunks);
-const FreeChunk *findLargerChunkInChunks(const size_t standardChunkSize, const FreeChunk *const chunks);
-void addChunkToChunks(FreeChunk *const chunk, FreeChunk **const chunks);
-bool removeChunkFromChunks(const FreeChunk *const chunk, const FreeChunk **const chunks);
-void *offsetBytes(const void *const pointer, const size_t offset);
-SplitChunks splitChunk(const FreeChunk *const chunkToSplit, const size_t sizeToCutout);
+// utils/zone
+size_t toChunkAreaSize(const Zone *const zone);
+ChunkHeader *toFirstChunk(const Zone *const zone);
 
-// variables
-extern PreallocatedZones preallocatedZones;
+// utils/chunk
+void *chunk2Mem(const ChunkHeader *const chunk);
+ChunkHeader *toNext(const ChunkHeader *const original);
+size_t chunk2ChunkSize(const ChunkHeader *const chunk);
+ChunkHeader *findChunk(const void *const mem, const Zone *const zone);
+const ChunkHeader *findFreeChunk(const size_t payloadSize, const Zone *const zone);
+ChunkHeader *findFittableFreeChunk(const size_t payloadSize, const Zone *const zone);
+void splitChunk(ChunkHeader *const main, const size_t goal);
+
+// utils/largeChunk
+void *largeChunk2Mem(const LargeChunkHeader *const header);
+void *toBase(const LargeChunkHeader *const header);
+size_t toBaseSize(const LargeChunkHeader *const header);
+const LargeChunkHeader *findLargeChunk(const void *const mem);
+LargeChunkHeader *toPrevious(const LargeChunkHeader *const original);
+void push(LargeChunkHeader *newbie);
+bool pop(const LargeChunkHeader *const victim);
+LargeChunkHeader *createLargeChunk(const size_t memSize);

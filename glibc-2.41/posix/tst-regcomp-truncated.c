@@ -75,7 +75,7 @@ do_test (void)
   /* Staging buffer for the constructed regular expression.  */
   char buffer[16];
 
-  /* Allocation used to detect over-reading by the regular expression
+  /* Global used to detect over-reading by the regular expression
      compiler.  */
   struct support_next_to_fault ntf
     = support_next_to_fault_allocate (sizeof (buffer));

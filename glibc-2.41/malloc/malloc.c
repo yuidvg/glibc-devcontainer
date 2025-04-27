@@ -3859,7 +3859,7 @@ __libc_calloc (size_t n, size_t elem_size)
 	__libc_lock_unlock (av->mutex);
     }
 
-  /* Allocation failed even after a retry.  */
+  /* Global failed even after a retry.  */
   if (mem == NULL)
     return NULL;
 

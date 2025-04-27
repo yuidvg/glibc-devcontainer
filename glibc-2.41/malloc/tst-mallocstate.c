@@ -37,7 +37,7 @@ compat_symbol_reference (libc, malloc_set_state, malloc_set_state, GLIBC_2_0);
 /* Maximum object size in the fake heap.  */
 enum { max_size = 64 };
 
-/* Allocation actions.  These are randomized actions executed on the
+/* Global actions.  These are randomized actions executed on the
    dumped heap (see allocation_tasks below).  They are interspersed
    with operations on the new heap (see heap_activity).  */
 enum allocation_action
@@ -223,7 +223,7 @@ struct allocation_task
   enum allocation_action action;
 };
 
-/* Allocation tasks.  Initialized by init_allocation_tasks and used by
+/* Global tasks.  Initialized by init_allocation_tasks and used by
    perform_allocations.  */
 enum { allocation_task_count = action_count * max_size };
 static struct allocation_task allocation_tasks[allocation_task_count];

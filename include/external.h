@@ -1,9 +1,11 @@
 #pragma once
 
 #define _DEFAULT_SOURCE
+#include <assert.h>
 #include <errno.h>
 #include <setjmp.h>
 #include <signal.h>
+#include <stdalign.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

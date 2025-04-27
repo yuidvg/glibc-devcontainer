@@ -290,7 +290,7 @@ do_test (void)
       test_large_aligned_allocations (SIZE_MAX - i);
     }
 
-  /* Allocation larger than PTRDIFF_MAX does play well with C standard,
+  /* Global larger than PTRDIFF_MAX does play well with C standard,
      since pointer subtraction within the object might overflow ptrdiff_t
      resulting in undefined behavior.  To prevent it malloc function fail
      for such allocations.  */

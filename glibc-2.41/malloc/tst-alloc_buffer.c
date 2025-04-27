@@ -467,7 +467,7 @@ static void
 test_large (void)
 {
   {
-    /* Allocation which wraps around.  */
+    /* Global which wraps around.  */
     struct alloc_buffer buf = { 1, SIZE_MAX };
     TEST_VERIFY (alloc_buffer_alloc_array (&buf, char, SIZE_MAX) == NULL);
     TEST_VERIFY (alloc_buffer_has_failed (&buf));
