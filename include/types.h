@@ -1,5 +1,6 @@
 #pragma once
 
+#include "constants.h"
 #include "external.h"
 
 /* Result type for allocation functions */
@@ -9,27 +10,37 @@ typedef struct
     void *const allocatedMemoryAddress;
 } AllocResult;
 
-// pad (<= MALLOC_ALIGN_MASK)
-typedef struct ChunkHeader
-{
-    size_t chunkSize; /* Size in bytes, including overhead(header + pad + payload). */
-    size_t padSize;   /* Size of padding to align to MALLOC_ALIGNMENT. */
-    bool isFree;
-    const struct ChunkHeader *nextChunkHeader;
-} ChunkHeader;
-// mem (should be aligned to MALLOC_ALIGNMENT) ->
-// (payloads)
 
-// variables
+
 typedef struct
 {
-    const ChunkHeader *tinyChunks;
-    const ChunkHeader *smallChunks;
-    const ChunkHeader *largeChunks;
+    size_t frontPadSize;
+    size_t payloadSize;
+    const LargeChunkHeader *next;
+} LargeChunkHeader;
+
+__attribute__((aligned(MALLOC_ALIGNMENT))) typedef struct ChunkHeader
+{
+    size_t payloadSize;
+    bool isFree;
+} ChunkHeader;
+static_assert(sizeof(ChunkHeader) % MALLOC_ALIGNMENT == 0, "ChunkHeader is not aligned to MALLOC_ALIGNMENT");
+
+typedef struct
+{
+    const void *base;
+    size_t size;
+    size_t frontPadSize;
+} Zone;
+
+typedef struct
+{
+    Zone tiny;
+    Zone small;
+    const LargeChunkHeader *large;
 } Zones;
 
 extern Zones zones;
-
 
 typedef struct
 {

@@ -1,35 +1,38 @@
 #include "all.h"
 
 /* The main memory allocation function */
-void *ftMalloc(const size_t reqSize)
+void *ftMalloc(const size_t reqSize) // todo: pattern 0
 {
-    const size_t chunkSize = reqSize + CHUNK_HEADER_SIZE;
     if (reqSize <= SMALL_MAX_SIZE)
     {
-        if (zones.smallChunks != NULL && zones.tinyChunks != NULL)
+        if (zones.tiny.base != NULL && zones.small.base != NULL) // check if the zones are initialized
         {
-            const ChunkHeader *const *const freeChunksToSearchPointer = reqSize <= (size_t)TINY_MAX_SIZE ? &zones.tinyChunks : &zones.smallChunks;
-            const ChunkHeader *const freeChunk = findChunkBySizeInChunks(chunkSize, *freeChunksToSearchPointer);
-            if (freeChunk != NULL)
+            const ChunkHeader *const firstChunk = reqSize <= (size_t)TINY_MAX_SIZE
+                                                      ? offsetBytes(zones.tiny.base, zones.tiny.frontPadSize)
+                                                      : offsetBytes(zones.small.base, zones.small.frontPadSize);
+            const size_t zoneSize = reqSize <= (size_t)TINY_MAX_SIZE ? zones.tiny.size : zones.small.size;
+            const size_t needForPayload = alignUp(reqSize);
+            ChunkHeader *const exact = (ChunkHeader *const)findFreeChunk(needForPayload, firstChunk, zoneSize);
+            if (exact != NULL)
             {
-                removeChunkFromChunks(freeChunk, (const ChunkHeader **const)freeChunksToSearchPointer);
-                return ((void *)(freeChunk + CHUNK_HEADER_SIZE));
+                exact->isFree = false;
+                return (chunkHeader2mem(exact));
             }
             else
             {
-                const ChunkHeader *const largerFreeChunk = findLargerChunkInChunks(chunkSize, *freeChunksToSearchPointer);
-                if (largerFreeChunk != NULL)
+                ChunkHeader *const larger = findLargerFreeChunkInChunks(needForPayload, firstChunk, zoneSize);
+                if (larger != NULL)
                 {
-                    if (largerFreeChunk->chunkSize > chunkSize + CHUNK_HEADER_SIZE) // is largerFreeChunk big enough to split?
-                    { // yes - split it
-                        const SplitChunks splitChunks = splitChunk(largerFreeChunk, chunkSize);
-                        removeChunkFromChunks(splitChunks.main, (const ChunkHeader **const)freeChunksToSearchPointer);
-                        return ((void *)splitChunks.main + CHUNK_HEADER_SIZE);
+                    if (larger->payloadSize >=
+                        needForPayload + CHUNK_MINIMUM_SIZE) // is largerFreeChunk big enough to split?
+                    {                                        // yes - split it
+                        splitChunk(larger, needForPayload);
+                        return (chunkHeader2mem(larger));
                     }
                     else // no - just use the largerFreeChunk
                     {
-                        removeChunkFromChunks(largerFreeChunk, (const ChunkHeader **const)freeChunksToSearchPointer);
-                        return ((void *)(largerFreeChunk + CHUNK_HEADER_SIZE));
+                        larger->isFree = false;
+                        return (chunkHeader2mem(larger));
                     }
                 }
                 else
@@ -47,16 +50,15 @@ void *ftMalloc(const size_t reqSize)
     }
     else
     {
-        const AllocResult allocResult = allocateMemory(chunkSize);
-        if (allocResult.succeeded)
+        LargeChunkHeader *const largeChunkHeader = createLargeChunk(reqSize);
+        if (largeChunkHeader != NULL)
         {
-            size_t *chunkSizeMutablePointer = (size_t *)allocResult.allocatedMemoryAddress;
-            *chunkSizeMutablePointer = chunkSize;
-            return (allocResult.allocatedMemoryAddress + CHUNK_HEADER_SIZE);
+            pushLargeChunk(largeChunkHeader, &zones.large);
+            return (largeChunkHeader2mem(largeChunkHeader));
         }
         else
         {
-            perror("Failed to allocate memory for ftMalloc");
+            perror("Failed to create large chunkß");
             return (NULL);
         }
     }

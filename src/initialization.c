@@ -8,20 +8,18 @@ __attribute__((constructor)) void initializePreAllocatedZones()
     const AllocResult tinyZoneResult = allocateMemory(TINY_ZONE_SIZE);
     if (tinyZoneResult.succeeded)
     {
-        ChunkHeader *const tinyFreeChunksMutable = (ChunkHeader *)tinyZoneResult.allocatedMemoryAddress;
-        tinyFreeChunksMutable->padSize = 0;
-        tinyFreeChunksMutable->isFree = true;
-        tinyFreeChunksMutable->chunkSize = TINY_ZONE_SIZE;
-        tinyFreeChunksMutable->nextChunkHeader = NULL;
+        // Initialize the tiny zone
+        zones.tiny.base = tinyZoneResult.allocatedMemoryAddress;
+        zones.tiny.zoneSize = TINY_ZONE_SIZE;
+        zones.tiny.frontPadSize = distanceToNextAlignment(tinyZoneResult.allocatedMemoryAddress);
 
-        zones.tinyChunks = tinyFreeChunksMutable;
         const AllocResult smallZoneResult = allocateMemory(SMALL_ZONE_SIZE);
         if (smallZoneResult.succeeded)
         {
-            ChunkHeader *const smallFreeChunksMutable = (ChunkHeader *)smallZoneResult.allocatedMemoryAddress;
-            smallFreeChunksMutable->chunkSize = SMALL_ZONE_SIZE;
-            smallFreeChunksMutable->nextChunkHeader = NULL;
-            zones.smallChunks = smallFreeChunksMutable;
+            // Initialize the small zone
+            zones.small.base = smallZoneResult.allocatedMemoryAddress;
+            zones.small.zoneSize = SMALL_ZONE_SIZE;
+            zones.small.frontPadSize = distanceToNextAlignment(smallZoneResult.allocatedMemoryAddress);
         }
         else
         {
@@ -36,12 +34,12 @@ __attribute__((constructor)) void initializePreAllocatedZones()
 
 __attribute__((destructor)) void cleanupPreAllocatedZones()
 {
-    if (zones.tinyChunks != NULL)
+    if (zones.tiny.base != NULL)
     {
-        unallocateMemory(zones.tinyChunks, TINY_ZONE_SIZE);
+        unallocateMemory(zones.tiny.base, zones.tiny.zoneSize);
     }
-    if (zones.smallChunks != NULL)
+    if (zones.small.base != NULL)
     {
-        unallocateMemory(zones.smallChunks, SMALL_ZONE_SIZE);
+        unallocateMemory(zones.small.base, zones.small.zoneSize);
     }
 }

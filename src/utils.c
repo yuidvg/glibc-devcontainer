@@ -1,88 +1,73 @@
 #include "all.h"
 
-const size_t memsize(const ChunkHeader *const chunkHeader)
+ChunkHeader *next(const ChunkHeader *const original)
 {
-    return chunkHeader->chunkSize - chunkHeader->padSize - CHUNK_HEADER_SIZE;
+    return (ChunkHeader *)offsetBytes(original, original->payloadSize);
 }
 
-const ChunkHeader *findChunkInChunks(const ChunkHeader *const chunkToFind, const ChunkHeader *const chunks)
+const ChunkHeader *findFreeChunk(const size_t payloadSize, const ChunkHeader *const chunks, const size_t zoneSize)
 {
     const ChunkHeader *current = chunks;
-    while (current != NULL)
+    size_t seenSize = 0;
+    while (seenSize < zoneSize)
     {
-        if (current == chunkToFind)
+        if (current->payloadSize >= payloadSize && current->isFree)
         {
             return current;
         }
-        current = current->nextChunkHeader;
+        seenSize += current->payloadSize + CHUNK_HEADER_SIZE;
+        current = next(current);
     }
     return NULL;
 }
 
-const ChunkHeader *findPreviousChunkInChunks(const ChunkHeader *const chunkToFind, const ChunkHeader *const chunks)
+const ChunkHeader *findLargerFreeChunkInChunks(const size_t payloadSize, const ChunkHeader *const chunks,
+                                               const size_t zoneSize)
 {
     const ChunkHeader *current = chunks;
-    while (current != NULL)
+    size_t seenSize = 0;
+    while (seenSize < zoneSize)
     {
-        if (current->nextChunkHeader == chunkToFind)
+        if (current->payloadSize >= payloadSize && current->isFree)
         {
             return current;
         }
-        current = current->nextChunkHeader;
+        seenSize += current->payloadSize + CHUNK_HEADER_SIZE;
+        current = next(current);
     }
     return NULL;
 }
 
-const ChunkHeader *findChunkBySizeInChunks(const size_t chunkSizeToFind, const ChunkHeader *const chunks)
+void splitChunk(ChunkHeader *const main, const size_t goal)
 {
-    const ChunkHeader *current = chunks;
-    while (current != NULL)
-    {
-        if (current->chunkSize == chunkSizeToFind)
-        {
-            return current;
-        }
-        current = current->nextChunkHeader;
-    }
-    return NULL;
+    const size_t restSize = CHUNK_HEADER_SIZE + main->payloadSize - goal;
+    ChunkHeader *const rest = (ChunkHeader *const)offsetBytes(main, goal);
+    rest->payloadSize = restSize;
+    rest->isFree = true;
+    main->payloadSize = goal;
 }
 
-const ChunkHeader *findLargerChunkInChunks(const size_t standardChunkSize, const ChunkHeader *const chunks)
+void pushLargeChunk(LargeChunkHeader *newbie, LargeChunkHeader **const group)
 {
-    const ChunkHeader *current = chunks;
-    while (current != NULL)
-    {
-        if (current->chunkSize > standardChunkSize)
-        {
-            return current;
-        }
-        current = current->nextChunkHeader;
-    }
-    return NULL;
+    newbie->next = *group;
+    *group = newbie;
 }
 
-void addChunkToChunks(ChunkHeader *chunk, ChunkHeader **const headToChunks)
+bool popLargeChunk(const LargeChunkHeader *const victim, LargeChunkHeader **const group)
 {
-    chunk->nextChunkHeader = *headToChunks;
-    *headToChunks = chunk;
-}
-
-bool removeChunkFromChunks(const ChunkHeader *const chunkToRemove, const ChunkHeader **const headToChunks)
-{
-    if (headToChunks != NULL && *headToChunks != NULL)
+    if (group != NULL && *group != NULL)
     {
-        const ChunkHeader *const foundChunk = findChunkInChunks(chunkToRemove, *headToChunks);
-        if (foundChunk != NULL)
+        const LargeChunkHeader *const found = findLargeChunk(victim, *group);
+        if (found != NULL)
         {
-            const ChunkHeader *const previousChunk = findPreviousChunkInChunks(chunkToRemove, *headToChunks);
-            if (previousChunk != NULL)
+            LargeChunkHeader *const previous = findPreviousLargeChunk(victim, *group);
+            if (previous != NULL)
             {
-                ChunkHeader *const previousChunkMutable = (ChunkHeader *const)previousChunk;
-                previousChunkMutable->nextChunkHeader = foundChunk->nextChunkHeader;
+                previous->next = found->next;
             }
             else
             {
-                *headToChunks = foundChunk->nextChunkHeader;
+                *group = found->next;
             }
             return true;
         }
@@ -97,36 +82,23 @@ bool removeChunkFromChunks(const ChunkHeader *const chunkToRemove, const ChunkHe
     }
 }
 
-ChunkHeader *createChunk(const size_t reqSize)
+LargeChunkHeader *createLargeChunk(const size_t reqSize)
 {
-    const size_t chunksize = reqsize2chunksize(reqSize);
-    const AllocResult allocResult = allocateMemory(chunksize);
+    const size_t allocationSize = reqsize2AllocationSize(reqSize);
+    const AllocResult allocResult = allocateMemory(allocationSize);
     if (allocResult.succeeded)
     {
-        const size_t padSize = rawAllocatedMemory2padSize(allocResult.allocatedMemoryAddress);
-        ChunkHeader *const chunkHeaderPointer =
-            (ChunkHeader *const)offsetBytes(allocResult.allocatedMemoryAddress, padSize);
-        chunkHeaderPointer->chunkSize = chunksize;
-        chunkHeaderPointer->padSize = padSize;
-        chunkHeaderPointer->isFree = true;
-        chunkHeaderPointer->nextChunkHeader = NULL;
-        return (chunkHeader2mem(chunkHeaderPointer));
+        const size_t frontPadSize = distanceToNextAlignment(allocResult.allocatedMemoryAddress);
+        LargeChunkHeader *const newbie =
+            (LargeChunkHeader *const)offsetBytes(allocResult.allocatedMemoryAddress, frontPadSize);
+        newbie->frontPadSize = frontPadSize;
+        newbie->payloadSize = allocationSize - frontPadSize;
+        newbie->next = NULL;
+        return newbie;
     }
     else
     {
         perror("Failed to allocate memory for ftMalloc");
         return (NULL);
     }
-}
-
-SplitChunks splitChunk(const ChunkHeader *const chunkToSplit, const size_t sizeToCutout)
-{
-    const size_t restSize = chunkToSplit->chunkSize - sizeToCutout;
-    ChunkHeader *const restMutable = (ChunkHeader *const)offsetBytes(chunkToSplit, sizeToCutout);
-    restMutable->chunkSize = restSize;
-    restMutable->nextChunkHeader = chunkToSplit->nextChunkHeader;
-    ChunkHeader *const mainMutable = (ChunkHeader *const)chunkToSplit;
-    mainMutable->chunkSize = sizeToCutout;
-    mainMutable->nextChunkHeader = restMutable;
-    return (SplitChunks){chunkToSplit, restMutable};
 }
