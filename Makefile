@@ -61,7 +61,7 @@ $(DIR_OBJ_TEST)/%.o: $(DIR_TEST)/%.c | $(DIR_OBJ_TEST)
 
 # Bin
 $(BIN_LIB): $(BIN_LIBFT) $(OBJS_LIB) | $(DIR_BIN)
-	$(CC) -shared -o $@ $^
+	$(CC) -shared -o $@ $(OBJS_LIB) -Wl,--whole-archive $(BIN_LIBFT) -Wl,--no-whole-archive
 	ln -sf $(notdir $@) $(BIN_LIB_SYM)
 
 $(BIN_TEST): $(OBJS_TEST) $(BIN_LIB) | $(DIR_BIN)

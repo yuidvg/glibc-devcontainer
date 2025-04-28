@@ -14,7 +14,7 @@ static size_t showZone(const char *const tag, const Zone *const zone)
                    (unsigned long)offsetBytes(chunk2Mem(current), current->payloadSize), current->payloadSize);
             total += current->payloadSize;
         }
-        seenSize += chunk2ChunkSize(current);
+        seenSize += toChunkSize(current);
         current = toNext(current);
     }
     return total;
