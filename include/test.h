@@ -1,6 +1,6 @@
 #pragma once
 
-#include "myMalloc.h"
+#include "ftMalloc.h"
 
 #include <pthread.h>
 #include <setjmp.h>
