@@ -13,6 +13,32 @@ ChunkHeader *toFirstChunk(const Zone *const zone)
 
 // chunk
 
+Zone *toZone(const void *const mem)
+{
+    const ChunkHeader *const foundTiny = findChunk(mem, &zones.tiny);
+    if (foundTiny != NULL)
+    {
+        return &zones.tiny;
+    }
+    else
+    {
+        const ChunkHeader *const foundSmall = findChunk(mem, &zones.small);
+        if (foundSmall != NULL)
+        {
+            return &zones.small;
+        }
+        else
+        {
+            return NULL;
+        }
+    }
+}
+
+void *toZoneEnd(const Zone *const zone)
+{
+    return offsetBytes(zone->base, zone->baseSize);
+}
+
 void *chunk2Mem(const ChunkHeader *const chunk)
 {
     return (void *)offsetBytes(chunk, CHUNK_HEADER_SIZE);
@@ -20,10 +46,10 @@ void *chunk2Mem(const ChunkHeader *const chunk)
 
 ChunkHeader *toNext(const ChunkHeader *const original)
 {
-    return (ChunkHeader *)offsetBytes(original, chunk2ChunkSize(original));
+    return (ChunkHeader *)offsetBytes(original, toChunkSize(original));
 }
 
-size_t chunk2ChunkSize(const ChunkHeader *const chunk)
+size_t toChunkSize(const ChunkHeader *const chunk)
 {
     return chunk->payloadSize + CHUNK_HEADER_SIZE;
 }
@@ -38,7 +64,7 @@ ChunkHeader *findChunk(const void *const mem, const Zone *const zone)
         {
             return current;
         }
-        seenSize += chunk2ChunkSize(current);
+        seenSize += toChunkSize(current);
         current = toNext(current);
     }
     return NULL;
@@ -54,7 +80,7 @@ const ChunkHeader *findFreeChunk(const size_t payloadSize, const Zone *const zon
         {
             return current;
         }
-        seenSize += chunk2ChunkSize(current);
+        seenSize += toChunkSize(current);
         current = toNext(current);
     }
     return NULL;
@@ -70,18 +96,40 @@ ChunkHeader *findFittableFreeChunk(const size_t payloadSize, const Zone *const z
         {
             return current;
         }
-        seenSize += chunk2ChunkSize(current);
+        seenSize += toChunkSize(current);
         current = toNext(current);
     }
     return NULL;
 }
 
-void splitChunk(ChunkHeader *const main, const size_t goal)
+void splitChunk(ChunkHeader *const main, const size_t goalPayload)
 {
-    ChunkHeader *const rest = (ChunkHeader *const)offsetBytes(main, CHUNK_HEADER_SIZE + goal);
-    rest->payloadSize = main->payloadSize - goal - CHUNK_HEADER_SIZE;
+    ChunkHeader *const rest = (ChunkHeader *const)offsetBytes(main, CHUNK_HEADER_SIZE + goalPayload);
+    rest->payloadSize = main->payloadSize - goalPayload - CHUNK_HEADER_SIZE;
     rest->isFree = true;
-    main->payloadSize = goal;
+    main->payloadSize = goalPayload;
+}
+
+size_t consequtiveFreeChunksSize(const ChunkHeader *const start)
+{
+    const ChunkHeader *const zoneEnd = toZoneEnd(toZone(start));
+    size_t size = 0;
+    const ChunkHeader *current = start;
+    while (current < zoneEnd && current->isFree)
+    {
+        size += toChunkSize(current);
+        current = toNext(current);
+    }
+    return size;
+}
+
+bool expandChunk(ChunkHeader *const expandee, const size_t by)
+{
+    if (isAligned(by) && by > alignUp(1))
+    {
+        expandee->payloadSize += by;
+    }
+    return false;
 }
 
 // largeChunk
@@ -101,14 +149,14 @@ size_t toBaseSize(const LargeChunkHeader *const header)
     return header->frontPadSize + LARGE_CHUNK_HEADER_SIZE + header->payloadSize;
 }
 
-const LargeChunkHeader *findLargeChunk(const void *const mem)
+LargeChunkHeader *findLargeChunk(const void *const mem)
 {
     const LargeChunkHeader *current = zones.large;
     while (current != NULL)
     {
         if (largeChunk2Mem(current) == mem)
         {
-            return current;
+            return (LargeChunkHeader *)current;
         }
         current = current->next;
     }
