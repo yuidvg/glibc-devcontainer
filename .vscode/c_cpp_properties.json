@@ -3,8 +3,7 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/include/**",
-                "${workspaceFolder}/libft/includes/**"
+                "${workspaceFolder}/**"
             ],
             "defines": [],
             "cStandard": "c17",
