@@ -87,7 +87,7 @@ $(TEST_OBJ): $(TEST_OBJ_DIR)/%.o: $(TEST_DIR)/%.c
 $(MALLOC_BIN_SYM): $(MALLOC_BIN)
 	ln -sf $(notdir $(MALLOC_BIN)) $(MALLOC_BIN_SYM)
 $(MALLOC_BIN): $(LIBFT_BIN) $(MALLOC_OBJ)
-	$(CC) -shared -o $@ $(MALLOC_OBJ) -L$(LIBFT_DIR) -lft
+	$(CC) -shared -o $@ $(MALLOC_OBJ) -L$(LIBFT_DIR) -lft -Wl,--version-script=libft_malloc.map
 $(MALLOC_OBJ): $(MALLOC_OBJ_DIR)/%.o: $(MALLOC_DIR)/%.c
 	$(CC) $(CFLAGS) -I$(MALLOC_INCLUDE) -I$(LIBFT_INCLUDE) -fPIC -c $< -o $@
 

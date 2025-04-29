@@ -1,5 +1,4 @@
-#ifndef __TEST_H__
-#define __TEST_H__
+#pragma once
 
 #include "malloc.h"
 #include "munit.h"
@@ -15,4 +14,4 @@
 #include <time.h>
 #include <unistd.h>
 
-#endif // __TEST_H__
+

@@ -8,6 +8,7 @@
         "unordered_map": "c",
         "vector": "c",
         "iterator": "c",
-        "string_view": "c"
+        "string_view": "c",
+        "type_traits": "c"
     }
 }

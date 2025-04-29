@@ -2,37 +2,31 @@
 
 int main()
 {
-    // Initial allocation
-    const size_t initial_size = 32;
-    void *ptr = malloc(initial_size);
-    const bool is_ptr_not_null = ptr != NULL;
-    (void)is_ptr_not_null;
-
-    // Fill with a pattern
-    memset(ptr, 0xBB, initial_size);
-
-    // Grow the allocation
-    const size_t new_size = 64;
-    void *new_ptr = realloc(ptr, new_size);
-    const bool is_new_ptr_not_null = new_ptr != NULL;
-    (void)is_new_ptr_not_null;
-
-    // Verify the original data is preserved
-    for (size_t i = 0; i < initial_size; i++)
+    void *p = malloc(42);
+    // Check p != NULL
+    if (p == NULL)
     {
-        const unsigned char value = ((unsigned char *)new_ptr)[i];
-        const bool is_value_bb = value == 0xBB;
-        (void)is_value_bb;
+        printf("p is NULL\n");
     }
 
-    // Verify we can write to the extended area
-    for (size_t i = initial_size; i < new_size; i++)
-    {
-        ((unsigned char *)new_ptr)[i] = 0xCC;
-    }
+    // Test read/write access p[0...41]
+    // We perform boundary checks: write/read first and last byte.
+    char *char_p = (char *)p;
+    const char test_val_start = 'A';
+    const char test_val_end = 'Z';
+    const size_t last_index = 41;
 
-    // Clean up
-    free(new_ptr);
+    // Write to boundaries
+    char_p[0] = test_val_start;
+    char_p[last_index] = test_val_end;
+
+    // Read and verify boundaries
+    const bool is_start_correct = char_p[0] == test_val_start;
+    const bool is_end_correct = char_p[last_index] == test_val_end;
+    (void)is_start_correct;
+    (void)is_end_correct;
+    // Clean up allocated memory (good practice in tests)
+    free(p);
 
     return 0;
 }
