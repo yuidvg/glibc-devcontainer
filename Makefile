@@ -3,82 +3,96 @@ HOSTTYPE := $(shell uname -m)_$(shell uname -s)
 endif
 
 CC = gcc
-CFLAGS_DEBUG = -g -std=c11
-CFLAGS = -Wall -Wextra -Werror -I./include -I./libft/includes $(CFLAGS_DEBUG)
+CFLAGS_COMMON = -Wall -Wextra -Werror  -std=c11
+CFLAGS_DEBUG = -g
+CFLAGS = $(CFLAGS_COMMON) $(CFLAGS_DEBUG)
 
-# libft
-DIR_LIBFT = libft
-BIN_LIBFT = $(DIR_LIBFT)/libft.a
-SRCS_LIBFT = $(wildcard $(DIR_LIBFT)/*.c)
+# Build Directories
+BUILD_DIR = build
+OBJ_DIR = $(BUILD_DIR)/obj
+BIN_DIR = $(BUILD_DIR)/bin
 
-# libft_malloc
-DIR_LIB = src
-SRCS = $(wildcard $(DIR_LIB)/*.c)
+# Debug
+DEBUG_BIN = $(BIN_DIR)/debug.out
 
-# Test
-DIR_TEST = test
-TEST_SRCS = $(DIR_TEST)/test.c
+DEBUG_DIR = debug
+DEBUG_SRC = $(wildcard $(DEBUG_DIR)/*.c)
 
+DEBUG_OBJ_DIR = $(OBJ_DIR)/debug
+DEBUG_OBJ = $(patsubst $(DEBUG_DIR)/%.c,$(DEBUG_OBJ_DIR)/%.o,$(DEBUG_SRC))
 
-# Build
-DIR_BUILD = build
+# Tests
+TEST_BIN = $(BIN_DIR)/test.out
 
-# Object
-DIR_OBJ = $(DIR_BUILD)/obj
+TEST_OBJ_DIR = $(OBJ_DIR)/test
+TEST_OBJ = $(patsubst $(TEST_DIR)/%.c,$(TEST_OBJ_DIR)/%.o,$(TEST_SRC))
 
-DIR_OBJ_LIB = $(DIR_OBJ)/lib
-OBJS_LIB = $(patsubst $(DIR_LIB)/%.c,$(DIR_OBJ_LIB)/%.o,$(SRCS))
+TEST_DIR = test
+TEST_SRC = $(wildcard $(TEST_DIR)/*.c)
 
-DIR_OBJ_TEST = $(DIR_OBJ)/test
-OBJS_TEST = $(patsubst $(DIR_TEST)/%.c,$(DIR_OBJ_TEST)/%.o,$(TEST_SRCS))
+# Malloc
+MALLOC_BIN = $(BIN_DIR)/libft_malloc_$(HOSTTYPE).so
+MALLOC_BIN_SYM = $(BIN_DIR)/libft_malloc.so
+MALLOC_INCLUDE = include
 
-# Bin
-DIR_BIN = $(DIR_BUILD)/bin
+MALLOC_OBJ_DIR = $(OBJ_DIR)/malloc
+MALLOC_OBJ = $(patsubst $(MALLOC_DIR)/%.c,$(MALLOC_OBJ_DIR)/%.o,$(MALLOC_SRC))
 
-BIN_LIB = $(DIR_BIN)/libft_malloc_$(HOSTTYPE).so
-BIN_LIB_SYM = $(DIR_BIN)/libft_malloc.so
+MALLOC_DIR = src
+MALLOC_SRC = $(wildcard $(MALLOC_DIR)/*.c)
 
-BIN_TEST = $(DIR_BIN)/test.out
-
-
-all: $(DIR_BUILD) $(DIR_OBJ) $(DIR_BIN) $(DIR_OBJ_LIB) $(DIR_OBJ_TEST) $(BIN_LIB) $(BIN_TEST)
-
-# libft
-$(BIN_LIBFT):
-	make -C $(DIR_LIBFT)
-
-# Directories
-$(DIR_BUILD) $(DIR_OBJ) $(DIR_BIN) $(DIR_OBJ_LIB) $(DIR_OBJ_TEST):
-	mkdir -p $@
-
-# Object files
-$(DIR_OBJ_LIB)/%.o: $(DIR_LIB)/%.c | $(DIR_OBJ_LIB)
-	$(CC) $(CFLAGS) -fPIC -c $< -o $@
-
-$(DIR_OBJ_TEST)/%.o: $(DIR_TEST)/%.c | $(DIR_OBJ_TEST)
-	$(CC) $(CFLAGS) -c $< -o $@
+# Libft
+LIBFT_DIR = libft
+LIBFT_BIN = $(LIBFT_DIR)/libft.a
+LIBFT_INCLUDE = $(LIBFT_DIR)/include
+LIBFT_SRC = $(wildcard $(LIBFT_DIR)/*.c)
 
 
-# Bin
-$(BIN_LIB): $(BIN_LIBFT) $(OBJS_LIB) | $(DIR_BIN)
-	$(CC) -shared -o $@ $(OBJS_LIB) -Wl,--whole-archive $(BIN_LIBFT) -Wl,--no-whole-archive
-	ln -sf $(notdir $@) $(BIN_LIB_SYM)
+#----------------------------------------------------------------------------------------------------#
+# Rules
+#----------------------------------------------------------------------------------------------------#
+all:  $(MALLOC_BIN) $(DEBUG_BIN) $(TEST_BIN)
 
-$(BIN_TEST): $(OBJS_TEST) $(BIN_LIB) | $(DIR_BIN)
-	$(CC) $(CFLAGS) -o $@ $(OBJS_TEST) -L$(DIR_BIN) -lft_malloc
+malloc: $(MALLOC_BIN_SYM)
 
+debug: $(DEBUG_BIN)
 
-test: $(BIN_TEST)
+test: $(TEST_BIN)
 
-test-run: test
-	LD_LIBRARY_PATH=./$(DIR_BIN) ./$(BIN_TEST)
+run-test: $(TEST_BIN)
+	./$(TEST_BIN)
 
 clean:
-	rm -rf $(DIR_BUILD)
+	rm -rf $(DEBUG_BIN) $(DEBUG_OBJ) $(TEST_BIN) $(TEST_OBJ) $(MALLOC_BIN_SYM) $(MALLOC_BIN) $(MALLOC_OBJ)
+	$(MAKE) -C $(LIBFT_DIR) fclean
 
-re: clean all
+re: clean
+	$(MAKE) all
 
-leak: $(BIN_TEST)
-	LD_LIBRARY_PATH=./$(DIR_BIN) valgrind --leak-check=full --show-leak-kinds=all ./$(BIN_TEST)
+.PHONY: all malloc debug test clean re run-test
 
-.PHONY: all clean re test test-run leak
+# Debug
+$(DEBUG_BIN): $(DEBUG_OBJ) $(MALLOC_BIN_SYM)
+	$(CC) $(CFLAGS) -o $@ $(DEBUG_OBJ) -L$(BIN_DIR) -lft_malloc -Wl,-rpath=$(BIN_DIR)
+$(DEBUG_OBJ): $(DEBUG_OBJ_DIR)/%.o: $(DEBUG_DIR)/%.c
+	$(CC) $(CFLAGS) -c -I$(MALLOC_INCLUDE) $< -o $@
+
+# Tests
+$(TEST_BIN): $(TEST_OBJ) $(MALLOC_BIN_SYM)
+	$(CC) $(CFLAGS) -o $@ $(TEST_OBJ) -L$(BIN_DIR) -lft_malloc -Wl,-rpath=$(BIN_DIR)
+$(TEST_OBJ): $(TEST_OBJ_DIR)/%.o: $(TEST_DIR)/%.c
+	$(CC) $(CFLAGS) -c -I$(MALLOC_INCLUDE) $< -o $@
+
+# Malloc
+$(MALLOC_BIN_SYM): $(MALLOC_BIN)
+	ln -sf $(notdir $(MALLOC_BIN)) $(MALLOC_BIN_SYM)
+$(MALLOC_BIN): $(LIBFT_BIN) $(MALLOC_OBJ)
+	$(CC) -shared -o $@ $(MALLOC_OBJ) -L$(LIBFT_DIR) -lft
+$(MALLOC_OBJ): $(MALLOC_OBJ_DIR)/%.o: $(MALLOC_DIR)/%.c
+	$(CC) $(CFLAGS) -I$(MALLOC_INCLUDE) -I$(LIBFT_INCLUDE) -fPIC -c $< -o $@
+
+# Libft
+$(LIBFT_BIN):
+	$(MAKE) -C $(LIBFT_DIR)
+
+#----------------------------------------------------------------------------------------------------#

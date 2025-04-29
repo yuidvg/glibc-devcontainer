@@ -1,3 +1,4 @@
+.DS_Store
 *.d
 *.o
 *.a
@@ -5,6 +6,7 @@
 *.dylib
 *.dll
 *.lib
+*.dSYM
 *.exp
 *.def
 *.manifest
@@ -21,9 +23,5 @@
 *.map
 *.os
 *.dt
-build-glibc/**
-*.tar
-bin/**
-build/**
-libMyMalloc.a
-testMyMalloc
+*.tar*
+

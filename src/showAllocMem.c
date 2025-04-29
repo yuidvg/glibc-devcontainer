@@ -35,7 +35,7 @@ static size_t showLargeZone()
     return total;
 }
 
-void show_alloc_mem()
+void show_allocated_memories()
 {
     size_t total = 0;
     total += showZone("TINY", &zones.tiny);
