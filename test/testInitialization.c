@@ -86,7 +86,7 @@ static MunitTest initialization_tests[] = {
     {"/initialization/tiny-allocations", test_initialization_tiny_allocations, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/initialization/small-allocations", test_initialization_small_allocations, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/initialization/large-allocations", test_initialization_large_allocations, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL} // 配列の終端マーカー
+    {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL} // End of array
 };
 
 // テストスイートを定義
