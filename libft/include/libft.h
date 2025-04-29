@@ -13,8 +13,8 @@
 #ifndef LIBFT_H
 # define LIBFT_H
 
-# include "ft_libs.h"
-# include "ft_types.h"
+#include "ft_libs.h"
+#include "ft_types.h"
 
 //char
 ///determine

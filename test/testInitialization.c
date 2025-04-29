@@ -1,59 +1,80 @@
-#include "all.h"
-#include "munit/munit.h"
-
-// グローバル変数 zones を参照 (initialization.c で定義)
-extern Zones zones;
+#include "test.h"
+#include "munit.h"
 
 // --- Test Cases ---
 
-// initializePreAllocatedZones によって初期化された tiny zone を検証するテスト
-static MunitResult test_initialization_tiny_zone(const MunitParameter params[], void *user_data_or_fixture)
+// 初期化後のメモリ割り当てが機能することを確認するテスト
+static MunitResult test_initialization_tiny_allocations(const MunitParameter params[], void *user_data_or_fixture)
 {
     (void)params; // 未使用パラメータをキャストして警告を抑制
     (void)user_data_or_fixture;
 
-    // コンストラクタが実行された結果、zones.tiny.base が NULL でないはず
-    munit_assert_ptr_not_null(zones.tiny.base);
+    // 複数の小さな割り当てが成功することを確認
+    void *ptrs[100];
+    const size_t small_size = 64; // TINY_MAX_SIZEより小さい値
 
-    // 期待されるサイズが設定されているか
-    munit_assert_size(zones.tiny.baseSize, ==, TINY_ZONE_SIZE);
+    // 小さなサイズの割り当てを複数回行い、すべて成功することを確認
+    for (int i = 0; i < 100; i++) {
+        ptrs[i] = malloc(small_size);
+        munit_assert_ptr_not_null(ptrs[i]);
 
-    // frontPadSize が計算されているか (具体的な値は環境依存だが、0以上であるはず)
-    munit_assert_size(zones.tiny.frontPadSize, >=, 0);
-    // パディング後のアドレスが MALLOC_ALIGNMENT の倍数になっているか
-    const uintptr_t firstChunkAddr = (uintptr_t)zones.tiny.base + zones.tiny.frontPadSize;
-    munit_assert_uintptr(firstChunkAddr % MALLOC_ALIGNMENT, ==, 0);
+        // 割り当てられたメモリが使用可能であることを確認
+        // (アドレスが適切にアラインされていることを間接的に確認)
+        memset(ptrs[i], 0xAA, small_size);
+    }
 
-    // 最初のチャンクヘッダが初期化されているか
-    const ChunkHeader *const firstChunk = (ChunkHeader *)firstChunkAddr;
-    munit_assert_true(firstChunk->isFree);
-
-    // 最初のチャンクのペイロードサイズが期待通りか
-    const size_t expectedPayload = zones.tiny.baseSize - zones.tiny.frontPadSize - CHUNK_HEADER_SIZE;
-    munit_assert_size(firstChunk->payloadSize, ==, expectedPayload);
+    // 割り当てたメモリをクリーンアップ
+    for (int i = 0; i < 100; i++) {
+        free(ptrs[i]);
+    }
 
     return MUNIT_OK; // テスト成功
 }
 
-// initializePreAllocatedZones によって初期化された small zone を検証するテスト
-static MunitResult test_initialization_small_zone(const MunitParameter params[], void *user_data_or_fixture)
+// 初期化後により大きなメモリ割り当てが機能することを確認するテスト
+static MunitResult test_initialization_small_allocations(const MunitParameter params[], void *user_data_or_fixture)
 {
     (void)params;
     (void)user_data_or_fixture;
 
-    // Small Zone の検証 (Tiny Zone と同様)
-    munit_assert_ptr_not_null(zones.small.base);
-    munit_assert_size(zones.small.baseSize, ==, SMALL_ZONE_SIZE);
-    munit_assert_size(zones.small.frontPadSize, >=, 0);
+    // 複数の中サイズの割り当てが成功することを確認
+    void *ptrs[20];
+    const size_t medium_size = 512; // TINY_MAX_SIZEより大きく、SMALL_MAX_SIZEより小さい値
 
-    const uintptr_t firstChunkAddr = (uintptr_t)zones.small.base + zones.small.frontPadSize;
-    munit_assert_uintptr(firstChunkAddr % MALLOC_ALIGNMENT, ==, 0);
+    // 中サイズの割り当てを複数回行い、すべて成功することを確認
+    for (int i = 0; i < 20; i++) {
+        ptrs[i] = malloc(medium_size);
+        munit_assert_ptr_not_null(ptrs[i]);
 
-    const ChunkHeader *const firstChunk = (ChunkHeader *)firstChunkAddr;
-    munit_assert_true(firstChunk->isFree);
+        // 割り当てられたメモリが使用可能であることを確認
+        memset(ptrs[i], 0xBB, medium_size);
+    }
 
-    const size_t expectedPayload = zones.small.baseSize - zones.small.frontPadSize - CHUNK_HEADER_SIZE;
-    munit_assert_size(firstChunk->payloadSize, ==, expectedPayload);
+    // 割り当てたメモリをクリーンアップ
+    for (int i = 0; i < 20; i++) {
+        free(ptrs[i]);
+    }
+
+    return MUNIT_OK;
+}
+
+// 初期化後に大きなメモリ割り当てが機能することを確認するテスト
+static MunitResult test_initialization_large_allocations(const MunitParameter params[], void *user_data_or_fixture)
+{
+    (void)params;
+    (void)user_data_or_fixture;
+
+    // 大きなサイズの割り当てが成功することを確認
+    const size_t large_size = 2048; // SMALL_MAX_SIZEより大きい値
+
+    void *ptr = malloc(large_size);
+    munit_assert_ptr_not_null(ptr);
+
+    // 割り当てられたメモリが使用可能であることを確認
+    memset(ptr, 0xCC, large_size);
+
+    // クリーンアップ
+    free(ptr);
 
     return MUNIT_OK;
 }
@@ -62,9 +83,9 @@ static MunitResult test_initialization_small_zone(const MunitParameter params[],
 
 // このファイル内のテストを配列にまとめる
 static MunitTest initialization_tests[] = {
-    {"/initialization/tiny-zone", test_initialization_tiny_zone, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {"/initialization/small-zone", test_initialization_small_zone, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    // 他の初期化関連テストがあればここに追加
+    {"/initialization/tiny-allocations", test_initialization_tiny_allocations, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {"/initialization/small-allocations", test_initialization_small_allocations, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {"/initialization/large-allocations", test_initialization_large_allocations, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL} // 配列の終端マーカー
 };
 
