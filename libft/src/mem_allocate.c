@@ -1,43 +1,36 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   list_delete.c                                      :+:      :+:    :+:   */
+/*   mem_allocate.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: ynishimu <ynishimu@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2023/01/16 17:16:26 by ynishimu          #+#    #+#             */
+/*   Created: 2023/02/25 21:09:42 by ynishimu          #+#    #+#             */
 /*   Updated: 2023/04/12 18:09:35 by ynishimu         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../../includes/libft.h"
+#include "libft.h"
 
-void	ft_lstdelone(t_list *lst, void (*del)(void*))
+void	*ft_malloc(size_t size, void *asnd_0, void *asnd_1, void *asnd_2)
 {
-	if (!lst || !del)
-		return ;
-	if (lst->content)
-		del(lst->content);
-	free(lst);
+	void	*allocated;
+
+	allocated = malloc(size);
+	if (!allocated)
+		ft_exit(-1, asnd_0, asnd_1, asnd_2);
+	return (allocated);
 }
 
-void	ft_lstclear(t_list **lst, void (*del)(void*))
+void	*ft_calloc(size_t count, size_t size)
 {
-	t_list	*tmp;
-	t_list	*tmp_next;
+	void	*alcd_ptr;
 
-	if (!lst || !del)
-		return ;
-	tmp = *lst;
-	tmp_next = *lst;
-	while (tmp)
-	{
-		tmp_next = tmp->next;
-		if (tmp->content)
-			del(tmp->content);
-		if (tmp)
-			free(tmp);
-		tmp = tmp_next;
-	}
-	*lst = NULL;
+	if (size != 0 && count > SIZE_MAX / size)
+		return (NULL);
+	alcd_ptr = malloc(count * size);
+	if (!alcd_ptr)
+		return (NULL);
+	ft_bzero(alcd_ptr, count * size);
+	return (alcd_ptr);
 }

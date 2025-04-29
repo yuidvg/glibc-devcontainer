@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../../includes/libft.h"
+#include "libft.h"
 
 ssize_t	ft_putptr_fd(uintptr_t ptr, int fd)
 {

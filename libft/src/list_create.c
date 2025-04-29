@@ -1,42 +1,25 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   list_read.c                                        :+:      :+:    :+:   */
+/*   list_create.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: ynishimu <ynishimu@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2023/01/16 22:30:49 by ynishimu          #+#    #+#             */
+/*   Created: 2023/01/17 14:32:49 by ynishimu          #+#    #+#             */
 /*   Updated: 2023/04/12 18:09:35 by ynishimu         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../../includes/libft.h"
+#include "libft.h"
 
-t_list	*ft_lstlast(t_list *lst)
+t_list	*ft_lstnew(void *content)
 {
 	t_list	*node;
 
-	if (!lst)
+	node = (t_list *)malloc(sizeof(t_list));
+	if (!node)
 		return (NULL);
-	node = lst;
-	while (node->next)
-		node = node->next;
+	node->content = content;
+	node->next = NULL;
 	return (node);
-}
-
-int	ft_lstsize(t_list *lst)
-{
-	t_list	*node;
-	size_t	size;
-
-	if (!lst)
-		return (0);
-	size = 0;
-	node = lst;
-	while (node)
-	{
-		node = node->next;
-		size++;
-	}
-	return (size);
 }

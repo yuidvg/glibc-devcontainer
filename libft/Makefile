@@ -2,49 +2,45 @@
 CC = cc
 CFLAGS = -Wall -Werror -Wextra
 CFLAGS_LEAK = -g -fsanitize=leak
+CFLAGS_DEBUG = -g -DDEBUG
 
-NAME = libft.a
-SRCSDIR = srcs/char/ srcs/error/ srcs/list/ srcs/memory/ srcs/print/ srcs/string/
-SRCS = char_determine.c char_operate.c\
-		error_exit.c\
-		list_create.c list_delete.c list_read.c list_update.c\
-		mem_allocate.c mem_measure.c mem_operate.c\
-		print_number.c print_string.c printf.c\
-		string_copy.c string_measure.c string_modify.c get_next_line.c ft_substr.c ft_split.c ft_itoa.c ft_atoi.c
-OBJSDIR = objs/
-OBJS = $(SRCS:%.c=$(OBJSDIR)%.o)
-INCLUDES = -I./
+OBJ_DIR = obj
+DEBUG_OBJ_DIR = $(OBJ_DIR)/debug
 
-NAME_DEBUG = libftdebug.a
-OBJSDIR_DEBUG = objs_debug/
-OBJS_DEBUG = $(SRCS:%.c=$(OBJSDIR_DEBUG)%.o)
-INCLUDES_DEBUG = $(INCLUDES)
+BIN = libft.a
+SRC_DIR = src
+SRC = $(wildcard $(SRC_DIR)/*.c)
+OBJ = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRC))
+INCLUDE_DIR = include
 
-vpath %.c $(SRCSDIR)
-vpath %.h includes/
-vpath %.o $(OBJSDIR)
+BIN_DEBUG = libftdebug.a
+DEBUG_OBJ = $(patsubst $(SRC_DIR)/%.c, $(DEBUG_OBJ_DIR)/%.o, $(SRC))
+DEBUG_INCLUDE = $(INCLUDE_DIR)
 
-all: $(NAME)
-$(NAME): $(OBJS)
-	ar rcs $(NAME) $(OBJS)
-$(OBJSDIR)%.o: %.c
-	@mkdir -p $(OBJSDIR)
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
-
-debug: $(NAME_DEBUG)
-$(NAME_DEBUG): $(OBJS_DEBUG)
+all: $(BIN)
+$(BIN): $(OBJ)
 	ar rcs $@ $^
-$(OBJSDIR_DEBUG)%.o: %.c
-	@mkdir -p $(OBJSDIR_DEBUG)
-	$(CC) $(CFLAGS_DEBUG) $(INCLUDES) -c $< -o $@
+
+$(OBJ): $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	$(CC) $(CFLAGS) -I$(SRC_DIR) -I$(INCLUDE_DIR) -c $< -o $@
+
+$(OBJ_DIR):
+	mkdir -p $(OBJ_DIR)
+
+debug: $(BIN_DEBUG)
+$(BIN_DEBUG): $(DEBUG_OBJ)
+	ar rcs $@ $^
+
+$(DEBUG_OBJ): $(DEBUG_OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	$(CC) $(CFLAGS_DEBUG) -I$(SRC_DIR) -I$(INCLUDE_DIR) -c $< -o $@
 
 clean:
-	rm -rf $(OBJS) $(OBJS_DEBUG)
+	rm -f $(OBJ) $(DEBUG_OBJ)
 
 fclean: clean
-	rm -f $(NAME) $(NAME_DEBUG)
+	rm -f $(BIN) $(BIN_DEBUG)
 
-re: fclean all
+re: fclean
+	@$(MAKE) all
 
-
-.PHONY: fclean all re clean
+.PHONY: fclean all re clean debug

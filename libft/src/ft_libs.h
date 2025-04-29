@@ -1,23 +1,25 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   error_exit.c                                       :+:      :+:    :+:   */
+/*   ft_libs.h                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: ynishimu <ynishimu@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2023/02/25 21:16:35 by ynishimu          #+#    #+#             */
-/*   Updated: 2023/04/12 18:09:35 by ynishimu         ###   ########.fr       */
+/*   Created: 2023/04/12 12:38:20 by ynishimu          #+#    #+#             */
+/*   Updated: 2023/04/12 19:08:57 by ynishimu         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../../includes/libft.h"
+#ifndef FT_LIBS_H
+# define FT_LIBS_H
 
-void	ft_exit(ssize_t code, void *asnd_0, void *asnd_1, void *asnd_2)
-{
-	if (code == -1)
-		ft_putstr_fd("Error\n", STDERR_FILENO);
-	free(asnd_0);
-	free(asnd_1);
-	free(asnd_2);
-	exit (code);
-}
+# include <stdlib.h>
+# include <unistd.h>
+# include <stddef.h>
+# include <limits.h>
+# include <errno.h>
+# include <stdbool.h>
+# include <stdarg.h>
+# include <stdint.h>
+
+#endif

@@ -1,25 +1,43 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   list_create.c                                      :+:      :+:    :+:   */
+/*   list_delete.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: ynishimu <ynishimu@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2023/01/17 14:32:49 by ynishimu          #+#    #+#             */
+/*   Created: 2023/01/16 17:16:26 by ynishimu          #+#    #+#             */
 /*   Updated: 2023/04/12 18:09:35 by ynishimu         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../../includes/libft.h"
+#include "libft.h"
 
-t_list	*ft_lstnew(void *content)
+void	ft_lstdelone(t_list *lst, void (*del)(void*))
 {
-	t_list	*node;
+	if (!lst || !del)
+		return ;
+	if (lst->content)
+		del(lst->content);
+	free(lst);
+}
 
-	node = (t_list *)malloc(sizeof(t_list));
-	if (!node)
-		return (NULL);
-	node->content = content;
-	node->next = NULL;
-	return (node);
+void	ft_lstclear(t_list **lst, void (*del)(void*))
+{
+	t_list	*tmp;
+	t_list	*tmp_next;
+
+	if (!lst || !del)
+		return ;
+	tmp = *lst;
+	tmp_next = *lst;
+	while (tmp)
+	{
+		tmp_next = tmp->next;
+		if (tmp->content)
+			del(tmp->content);
+		if (tmp)
+			free(tmp);
+		tmp = tmp_next;
+	}
+	*lst = NULL;
 }
