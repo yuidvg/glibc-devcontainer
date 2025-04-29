@@ -12,13 +12,9 @@
 #include <stdlib.h>
 
 /* Function prototypes - implementation functions */
-void ftFree(void *ptr);
-void *ftMalloc(size_t size);
-void *ftRealloc(void *ptr, size_t size);
+void free(void *ptr);
+void *malloc(size_t size);
+void *realloc(void *ptr, size_t size);
 
 void show_alloc_mem();
 
-/* System override functions */
-// void *malloc(size_t size);
-// void free(void *ptr);
-// void *realloc(void *ptr, size_t size);

@@ -53,3 +53,4 @@ LargeChunkHeader *createLargeChunk(const size_t memSize);
 void *ftMalloc(const size_t reqSize);
 void ftFree(const void *const mem);
 void *ftRealloc(const void *const originalMem, const size_t reqSize);
+void show_allocated_memories();
