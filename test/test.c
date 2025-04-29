@@ -3,6 +3,7 @@
 #include "test.h"
 #include "munit.h"
 #include <errno.h>
+#include <stddef.h> // For max_align_t
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -207,6 +208,164 @@ static MunitResult test_double_free_detection(const MunitParameter params[], voi
 }
 #pragma GCC diagnostic pop
 
+// Add realloc tests
+static MunitResult test_realloc_basic(const MunitParameter params[], void *user_data)
+{
+    // Suppress unused parameter warnings
+    (void)params;
+    (void)user_data;
+
+    // Initial allocation
+    const size_t initial_size = 32;
+    void *ptr = malloc(initial_size);
+    munit_assert_not_null(ptr);
+
+    // Fill with a pattern
+    memset(ptr, 0xBB, initial_size);
+
+    // Grow the allocation
+    const size_t new_size = 64;
+    void *new_ptr = realloc(ptr, new_size);
+    munit_assert_not_null(new_ptr);
+
+    // Verify the original data is preserved
+    for (size_t i = 0; i < initial_size; i++)
+    {
+        const unsigned char value = ((unsigned char *)new_ptr)[i];
+        munit_assert_uint8(value, ==, 0xBB);
+    }
+
+    // Verify we can write to the extended area
+    for (size_t i = initial_size; i < new_size; i++)
+    {
+        ((unsigned char *)new_ptr)[i] = 0xCC;
+    }
+
+    // Clean up
+    free(new_ptr);
+
+    return MUNIT_OK;
+}
+
+static MunitResult test_realloc_null(const MunitParameter params[], void *user_data)
+{
+    // Suppress unused parameter warnings
+    (void)params;
+    (void)user_data;
+
+    // Test realloc with NULL pointer (should behave like malloc)
+    const size_t size = 50;
+    void *ptr = realloc(NULL, size);
+    munit_assert_not_null(ptr);
+
+    // Verify we can use the memory
+    memset(ptr, 0xDD, size);
+
+    // Clean up
+    free(ptr);
+
+    return MUNIT_OK;
+}
+
+static MunitResult test_realloc_zero(const MunitParameter params[], void *user_data)
+{
+    // Suppress unused parameter warnings
+    (void)params;
+    (void)user_data;
+
+    // Allocate memory
+    void *ptr = malloc(42);
+    munit_assert_not_null(ptr);
+
+    // Realloc with size 0 (should behave like free)
+    void *new_ptr = realloc(ptr, 0);
+
+    // According to POSIX, this can return NULL or a unique pointer that can be passed to free
+    if (new_ptr != NULL)
+    {
+        free(new_ptr);
+    }
+
+    return MUNIT_OK;
+}
+
+static MunitResult test_malloc_alignment(const MunitParameter params[], void *user_data)
+{
+    // Suppress unused parameter warnings
+    (void)params;
+    (void)user_data;
+
+    // Test for proper alignment of returned pointers
+
+    // Allocate with different sizes
+    for (size_t size = 1; size <= 64; size++)
+    {
+        void *ptr = malloc(size);
+        munit_assert_not_null(ptr);
+
+        // Check alignment - should be at least 8-byte aligned
+        // (most modern architectures align to 8 or 16 bytes)
+        uintptr_t addr = (uintptr_t)ptr;
+        size_t min_alignment = 8;
+
+        if (addr % min_alignment != 0)
+        {
+            printf("Alignment error: address %p not aligned to %zu bytes (size=%zu)\n", ptr, min_alignment, size);
+            free(ptr);
+            return MUNIT_FAIL;
+        }
+
+        // Write to memory to ensure it's usable
+        memset(ptr, 0x42, size);
+
+        // Cleanup
+        free(ptr);
+    }
+
+    return MUNIT_OK;
+}
+
+static MunitResult test_multiple_allocations(const MunitParameter params[], void *user_data)
+{
+    // Suppress unused parameter warnings
+    (void)params;
+    (void)user_data;
+
+    // Test multiple allocations to see if they come from the same zone
+    const size_t size = 16;   // Small enough for TINY zone
+    const size_t count = 100; // We should get at least 100 allocations per zone
+
+    void *ptrs[count];
+
+    // Allocate many blocks
+    for (size_t i = 0; i < count; i++)
+    {
+        ptrs[i] = malloc(size);
+        munit_assert_not_null(ptrs[i]);
+
+        // Write to each allocation to ensure it's usable
+        memset(ptrs[i], (unsigned char)i, size);
+    }
+
+    // Verify data in each block
+    for (size_t i = 0; i < count; i++)
+    {
+        unsigned char *ptr = ptrs[i];
+        for (size_t j = 0; j < size; j++)
+        {
+            munit_assert_uint8(ptr[j], ==, (unsigned char)i);
+        }
+    }
+
+    // Free all blocks
+    for (size_t i = 0; i < count; i++)
+    {
+        free(ptrs[i]);
+    }
+
+    return MUNIT_OK;
+}
+
 // --- Test Suite Definition ---
 
 static MunitTest ft_malloc_tests[] = {{
@@ -253,6 +412,41 @@ static MunitTest ft_malloc_tests[] = {{
                                       },
                                       {
                                           "/api/free/double-free", test_double_free_detection,
+                                          NULL, // setup
+                                          NULL, // tear_down
+                                          MUNIT_TEST_OPTION_NONE,
+                                          NULL // parameters
+                                      },
+                                      {
+                                          "/api/realloc/basic", test_realloc_basic,
+                                          NULL, // setup
+                                          NULL, // tear_down
+                                          MUNIT_TEST_OPTION_NONE,
+                                          NULL // parameters
+                                      },
+                                      {
+                                          "/api/realloc/null", test_realloc_null,
+                                          NULL, // setup
+                                          NULL, // tear_down
+                                          MUNIT_TEST_OPTION_NONE,
+                                          NULL // parameters
+                                      },
+                                      {
+                                          "/api/realloc/zero", test_realloc_zero,
+                                          NULL, // setup
+                                          NULL, // tear_down
+                                          MUNIT_TEST_OPTION_NONE,
+                                          NULL // parameters
+                                      },
+                                      {
+                                          "/api/malloc/alignment", test_malloc_alignment,
+                                          NULL, // setup
+                                          NULL, // tear_down
+                                          MUNIT_TEST_OPTION_NONE,
+                                          NULL // parameters
+                                      },
+                                      {
+                                          "/smoke/multiple-allocations", test_multiple_allocations,
                                           NULL, // setup
                                           NULL, // tear_down
                                           MUNIT_TEST_OPTION_NONE,

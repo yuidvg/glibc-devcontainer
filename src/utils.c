@@ -112,15 +112,23 @@ void splitChunk(ChunkHeader *const main, const size_t goalPayload)
 
 size_t consequtiveFreeChunksSize(const ChunkHeader *const start)
 {
-    const ChunkHeader *const zoneEnd = toZoneEnd(toZone(start));
-    size_t size = 0;
-    const ChunkHeader *current = start;
-    while (current < zoneEnd && current->isFree)
+    const Zone *const zone = toZone(start);
+    if (zone != NULL)
     {
-        size += toChunkSize(current);
-        current = toNext(current);
+        const ChunkHeader *const zoneEnd = toZoneEnd(zone);
+        size_t size = 0;
+        const ChunkHeader *current = start;
+        while (current < zoneEnd && current->isFree)
+        {
+            size += toChunkSize(current);
+            current = toNext(current);
+        }
+        return size;
     }
-    return size;
+    else
+    {
+        return 0;
+    }
 }
 
 bool expandChunk(ChunkHeader *const expandee, const size_t by)
