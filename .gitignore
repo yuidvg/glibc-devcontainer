@@ -24,5 +24,4 @@
 *.os
 *.dt
 *.tar*
-build/**
 
