@@ -1,15 +1,15 @@
 ---
-description: 
-globs: 
+description:
+globs:
 alwaysApply: true
 ---
-### 🎯 Guidelines for Writing *Functional‑Style* C Code  
-*(Each rule is immediately followed by a complete, compilable example.)*  
+### 🎯 Guidelines for Writing *Functional-Style* C Code
+*(Each rule is immediately followed by a complete, compilable example.)*
 
 ---
 
-#### 1. Favor a *functional* mind‑set  
-**Rule 1** — Write *pure* functions whose result depends **only** on their inputs.  
+#### 1. Favor a *functional* mind-set
+**Rule 1** — Write *pure* functions whose result depends **only** on their inputs.
 ```c
 // Pure: computes without reading globals or mutating state
 int square(const int x)
@@ -20,7 +20,7 @@ int square(const int x)
 
 ---
 
-#### 2. Mark **every** variable `const`  
+#### 2. Mark **every** variable `const`
 ```c
 int sumThree(const int a, const int b, const int c)
 {
@@ -31,7 +31,7 @@ int sumThree(const int a, const int b, const int c)
 
 ---
 
-#### 3. No mutation — one name ↔ one value  
+#### 3. No mutation — one name ↔ one value
 ```c
 const int initialCounter = 0;
 const int nextCounter    = initialCounter + 1;
@@ -39,7 +39,7 @@ const int nextCounter    = initialCounter + 1;
 
 ---
 
-#### 4. All dependencies come through arguments  
+#### 4. All dependencies come through arguments
 ```c
 typedef struct
 {
@@ -58,7 +58,7 @@ double average(const ConstIntArray numbers)
 
 ---
 
-#### 5. No side‑effects (except wrapped syscalls)  
+#### 5. No side-effects (except wrapped syscalls)
 ```c
 typedef struct
 {
@@ -69,7 +69,7 @@ typedef struct
 
 ---
 
-#### 6. Always wrap syscalls  
+#### 6. Always wrap syscalls
 ```c
 typedef struct { const bool succeeded; const int result; } ResultFd;
 
@@ -85,7 +85,7 @@ ResultFd openFileReadOnly(const char *const path)
 
 ---
 
-#### 7. Canonical function skeleton  
+#### 7. Canonical function skeleton
 ```c
 int someFunction(const size_t a, const SomeType b)
 {
@@ -98,7 +98,7 @@ int someFunction(const size_t a, const SomeType b)
 
 ---
 
-#### 8. Consistent naming style  
+#### 8. Consistent naming style
 | Entity                        | Style      | Example    |
 |-------------------------------|------------|------------|
 | Functions / variables         | camelCase  | `readFile` |
@@ -106,8 +106,8 @@ int someFunction(const size_t a, const SomeType b)
 
 ---
 
-#### 9. **Avoid early returns — use a single, explicit control‑flow block**  
-**Rule 9** — Instead of returning at multiple exit points, structure logic with a single `if / else if / else` ladder that ends in one `return`.  
+#### 9. **Avoid early returns — use a single, explicit control-flow block**
+**Rule 9** — Instead of returning at multiple exit points, structure logic with a single `if / else if / else` ladder that ends in one `return`.
 
 ```c
 int classifyScore(const int score)
@@ -126,24 +126,24 @@ int classifyScore(const int score)
     }
     else
     {
-        /* abnormal (error or low‑score) case */
+        /* abnormal (error or low-score) case */
         category = -1;
     }
 
     return category;                        // single exit point
 }
 ```
-*Notes*  
-* Only **one** `return` (the very last statement).  
-* The `else if … else` ladder makes every path explicit and keeps control‑flow linear, which is easier to reason about in a functional style.  
-* The one mutable local (`category`) is an *exception* to Rule 3, justified because it represents the function’s eventual return value without causing observable side‑effects.
+*Notes*
+* Only **one** `return` (the very last statement).
+* The `else if … else` ladder makes every path explicit and keeps control-flow linear, which is easier to reason about in a functional style.
+* The one mutable local (`category`) is an *exception* to Rule 3, justified because it represents the function’s eventual return value without causing observable side-effects.
 
 ---
 
-## 10 · Predicate‑Function Naming
+## 10 · Predicate-Function Naming
 
-Boolean‑returning functions should read like **questions**—start them with  
-`is`, `has`, `can`, `will`, etc.—rather than a vague verb such as `check`.
+Boolean-returning functions should read like **questions**—start them with
+`is`, `has`, `can`, `will`, etc.—rather than a vague verb such as `check`.
 
 ```c
 // ✅  Good: name reads like a true/false question
@@ -156,20 +156,20 @@ bool isSizeOverflowed(const size_t size)
 // bool checkSizeOverflow(const size_t size) { … }
 ```
 
-> **Why?**  
-> Descriptive predicates make call sites self‑documenting:  
+> **Why?**
+> Descriptive predicates make call sites self-documenting:
 > `if (isSizeOverflowed(n))` is clearer than `if (checkSizeOverflow(n))`.
 
 ---
 
 ### 📌 Checklist
 
-1. **Pure** functions, deterministic output.  
-2. `const` **everywhere** (rare, scoped exceptions allowed).  
-3. **Never** re‑assign an existing identifier (Rule 3).  
-4. Pass **all** data via parameters.  
-5. Wrap **all** side‑effects in `Result…` structs.  
-6. Follow the **function skeleton** format.  
-7. camelCase for functions/variables, **PascalCase** for types.  
-8. **Single exit point**: express flow with `if / else if / else`, no early returns.
+1. **Pure** functions, deterministic output.
+2. `const` **everywhere** (rare, scoped exceptions allowed).
+3. **Never** re-assign an existing identifier (Rule 3).
+4. Pass **all** data via parameters.
+5. Wrap **all** side-effects in `Result…` structs.
+6. Follow the **function skeleton** format.
+7. camelCase for functions/variables, **PascalCase** for types.
+8. **Single exit point**: express flow with `if / else if / else`, no early returns.
 9. * Use **predicate names** (`is…`, `has…`, `can…`, …) for all `bool` functions.
