@@ -3,14 +3,14 @@
 static size_t showZone(const char *const tag, const Zone *const zone)
 {
     ChunkHeader *current = (ChunkHeader *)toFirstChunk(zone);
-    ft_printf("%s : 0x%lX\n", tag, (unsigned long)current);
+    ft_printf("%s : 0x%X\n", tag, (unsigned long)current);
     size_t seenSize = 0;
     size_t total = 0;
     while (seenSize < toChunkAreaSize(zone))
     {
         if (!current->isFree)
         {
-            ft_printf("0x%lX - 0x%lX : %zu bytes\n", (unsigned long)chunk2Mem(current),
+            ft_printf("0x%X - 0x%X : %u bytes\n", (unsigned long)chunk2Mem(current),
                       (unsigned long)offsetBytes(chunk2Mem(current), current->payloadSize), current->payloadSize);
             total += current->payloadSize;
         }
@@ -24,10 +24,10 @@ static size_t showLargeZone()
 {
     LargeChunkHeader *current = zones.large;
     size_t total = 0;
-    ft_printf("LARGE : 0x%lX\n", (unsigned long)current);
+    ft_printf("LARGE : 0x%X\n", (unsigned long)current);
     while (current != NULL)
     {
-        ft_printf("0x%lX - 0x%lX : %zu bytes\n", (unsigned long)largeChunk2Mem(current),
+        ft_printf("0x%X - 0x%X : %u bytes\n", (unsigned long)largeChunk2Mem(current),
                   (unsigned long)offsetBytes(largeChunk2Mem(current), current->payloadSize), current->payloadSize);
         total += current->payloadSize;
         current = current->next;
