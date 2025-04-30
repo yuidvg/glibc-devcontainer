@@ -2,7 +2,7 @@
 | --- | -------------- | ---------------------------- | ------------------------------------------------------ | ----------------------------------------------------------- |
 | 1   | malloc         | basic-allocation             | `p = malloc(42)`                                       | `p != NULL` ∧ read/write `p[0…41]` OK                       |
 | 2   | malloc         | size-0-behaviour             | `p = malloc(0)`                                        | `(p==NULL)` ∨ `(unique pointer ∧ free(p) safe)`             |
-| 3   | malloc         | alignment                    | `uintptr_t(p) % alignof(max_align_t)`                  | == 0                                                        |
+| 3   | malloc         | alignment                    | `uintptr_t(p) % 16`                                    | == 0                                                        |
 | 4   | malloc         | tiny-upper-bound             | `malloc(n)` where *n* = last TINY size                 | listed under TINY in `show_alloc_mem`                       |
 | 5   | malloc         | small-lower-bound            | `malloc(n+1)`                                          | listed under SMALL                                          |
 | 6   | malloc         | large-allocation             | `malloc(m+1)`                                          | individual `mmap`; listed under LARGE                       |

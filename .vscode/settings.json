@@ -9,6 +9,8 @@
         "vector": "c",
         "iterator": "c",
         "string_view": "c",
-        "type_traits": "c"
+        "type_traits": "c",
+        "cstddef": "c",
+        "memory_resource": "c"
     }
 }
