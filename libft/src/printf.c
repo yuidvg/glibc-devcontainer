@@ -12,16 +12,27 @@
 
 #include "libft.h"
 
-ssize_t	ft_putptr_fd(uintptr_t ptr, int fd)
+static ssize_t	ft_putptr_fd(uintptr_t ptr, const char *base, int fd)
 {
 	ssize_t	printed;
 
 	printed = 0;
 	if (ptr >= 16)
-		printed += ft_putptr_fd(ptr / 16, fd);
+		printed += ft_putptr_fd(ptr / 16, base, fd);
 	else
 		printed += ft_putstr_fd("0x", fd);
-	printed += ft_putchar_fd(UHEX_L[ptr % 16], fd);
+	printed += ft_putchar_fd(base[ptr % 16], fd);
+	return (printed);
+}
+
+static ssize_t	ft_putsize_t_fd(size_t n, char *digits, int fd)
+{
+	ssize_t	printed;
+
+	printed = 0;
+	if (n >= 10)
+		printed += ft_putsize_t_fd(n / 10, digits, fd);
+	printed += ft_putchar_fd(digits[n % 10], fd);
 	return (printed);
 }
 
@@ -32,7 +43,9 @@ ssize_t	putfmtd_fd(char exp, va_list ap, int fd)
 	if (exp == 's')
 		return (ft_putstr_fd(va_arg(ap, char *), fd));
 	if (exp == 'p')
-		return (ft_putptr_fd((uintptr_t)va_arg(ap, void *), fd));
+		return (ft_putptr_fd((uintptr_t)va_arg(ap, void *), UHEX_L, fd));
+	if (exp == 'P')
+		return (ft_putptr_fd((uintptr_t)va_arg(ap, void *), UHEX_U, fd));
 	if (exp == 'd' || exp == 'i')
 		return (ft_putnbr_fd(va_arg(ap, int), fd));
 	if (exp == 'u')
@@ -41,6 +54,8 @@ ssize_t	putfmtd_fd(char exp, va_list ap, int fd)
 		return (ft_putunbr_fd(va_arg(ap, unsigned int), UHEX_L, fd));
 	if (exp == 'X')
 		return (ft_putunbr_fd(va_arg(ap, unsigned int), UHEX_U, fd));
+	if (exp == 't')
+		return (ft_putsize_t_fd(va_arg(ap, size_t), UDECIMAL, fd));
 	if (exp == '%')
 		return (ft_putchar_fd('%', fd));
 	return (0);

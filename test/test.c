@@ -13,9 +13,6 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
-// External function declaration
-void show_alloc_mem(void);
-
 // For test #26: Multi-threaded malloc/free test
 #define NUM_THREADS 4
 #define ITERATIONS_PER_THREAD 1000
