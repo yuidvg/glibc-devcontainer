@@ -20,7 +20,6 @@
 *.bin
 *.hex
 *.elf
-*.map
 *.os
 *.dt
 *.tar*
