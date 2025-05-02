@@ -1,12 +1,15 @@
 {
     "version": "0.2.0",
     "configurations": [
+        // ... existing configurations ...
         {
             "name": "debug-test",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/test.out",
-            "args": [],
+            "args": [
+                "--no-fork"
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
@@ -22,10 +25,21 @@
                     "description": "Set Disassembly Flavor to Intel",
                     "text": "-gdb-set disassembly-flavor intel",
                     "ignoreFailures": true
-                }
+                },
+                {
+                    "description": "Follow child process after fork",
+                    "text": "-gdb-set follow-fork-mode child",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Keep both parent and child processes under GDB control",
+                    "text": "-gdb-set detach-on-fork off",
+                    "ignoreFailures": true
+                },
             ],
             "preLaunchTask": "build-test"
         },
+        // ... other configurations ...
         {
             "name": "debug-malloc",
             "type": "cppdbg",
