@@ -4,6 +4,7 @@ Zones zones;
 
 __attribute__((constructor)) void initializePreAllocatedZones()
 {
+    zones.large = NULL;
     // Allocate memory for the management struct itself using mmap
     const AllocResult tinyZoneResult = allocateMemory(TINY_ZONE_SIZE);
     if (tinyZoneResult.succeeded)
