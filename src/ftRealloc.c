@@ -40,7 +40,7 @@ void *ftRealloc(const void *const originalMem, const size_t reqSize)
             { // yes - expand in-place -> split to optimize
                 expandChunk(originalChunk, consequtiveFreeSize);
                 splitChunk(originalChunk, needForPayload);
-                return (void *)originalChunk;
+                return chunk2Mem(originalChunk);
             }
             else
             { // no - allocate new memory -> copy -> free old memory
