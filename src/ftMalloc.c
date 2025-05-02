@@ -1,5 +1,18 @@
 #include "all.h"
 
+static bool defrag()
+{
+    if (zones.tiny.base != NULL && zones.small.base != NULL)
+    {
+        
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 /* The main memory allocation function */
 void *ftMalloc(const size_t reqSize) // todo: pattern 0
 {
@@ -56,7 +69,7 @@ void *ftMalloc(const size_t reqSize) // todo: pattern 0
         }
         else
         {
-            perror("Failed to create large chunkß");
+            perror("Failed to create large chunk");
             return (NULL);
         }
     }
