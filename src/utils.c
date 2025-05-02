@@ -104,7 +104,7 @@ ChunkHeader *findFittableFreeChunk(const size_t payloadSize, const Zone *const z
 
 void splitChunk(ChunkHeader *const main, const size_t goalPayload)
 {
-    ChunkHeader *const rest = (ChunkHeader *const)offsetBytes(main, CHUNK_HEADER_SIZE + goalPayload);
+    ChunkHeader *const rest = (ChunkHeader *const)offsetBytes(chunkHeader2mem(main), goalPayload);
     rest->payloadSize = main->payloadSize - goalPayload - CHUNK_HEADER_SIZE;
     rest->isFree = true;
     main->payloadSize = goalPayload;
@@ -133,9 +133,10 @@ size_t consequtiveFreeChunksSize(const ChunkHeader *const start)
 
 bool expandChunk(ChunkHeader *const expandee, const size_t by)
 {
-    if (isAligned(by) && by > alignUp(1))
+    if (by % MALLOC_ALIGNMENT == 0)
     {
         expandee->payloadSize += by;
+        return true;
     }
     return false;
 }
