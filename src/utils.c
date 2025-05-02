@@ -219,11 +219,12 @@ LargeChunkHeader *createLargeChunk(const size_t reqSize)
     const AllocResult allocResult = allocateMemory(allocationSize);
     if (allocResult.succeeded)
     {
-        const size_t frontPadSize = distanceToNextAlignment(offsetBytes(allocResult.allocatedMemoryAddress, LARGE_CHUNK_HEADER_SIZE));
+        const size_t frontPadSize =
+            distanceToNextAlignment(offsetBytes(allocResult.allocatedMemoryAddress, LARGE_CHUNK_HEADER_SIZE));
         LargeChunkHeader *const newbie =
             (LargeChunkHeader *const)offsetBytes(allocResult.allocatedMemoryAddress, frontPadSize);
         newbie->frontPadSize = frontPadSize;
-        newbie->payloadSize = allocationSize - frontPadSize;
+        newbie->payloadSize = allocationSize - frontPadSize - LARGE_CHUNK_HEADER_SIZE;
         newbie->next = NULL;
         return newbie;
     }
