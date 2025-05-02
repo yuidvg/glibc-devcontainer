@@ -62,6 +62,9 @@ test: $(TEST_BIN)
 run-test: $(TEST_BIN)
 	./$(TEST_BIN)
 
+debug-test: $(TEST_BIN)
+	gdb $(TEST_BIN)
+
 clean:
 	rm -rf $(DEBUG_BIN) $(DEBUG_OBJ) $(TEST_BIN) $(TEST_OBJ) $(MALLOC_BIN_SYM) $(MALLOC_BIN) $(MALLOC_OBJ)
 	$(MAKE) -C $(LIBFT_DIR) fclean
@@ -73,9 +76,9 @@ re: clean
 
 # Debug
 $(DEBUG_BIN): $(DEBUG_OBJ) $(MALLOC_BIN_SYM)
-	$(CC) $(CFLAGS) -o $@ $(DEBUG_OBJ) -L$(BIN_DIR) -lft_malloc -Wl,-rpath=$(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $(DEBUG_OBJ) -L$(BIN_DIR) -lft_malloc -Wl,-rpath=$(BIN_DIR) -L$(LIBFT_DIR) -lft
 $(DEBUG_OBJ): $(DEBUG_OBJ_DIR)/%.o: $(DEBUG_DIR)/%.c
-	$(CC) $(CFLAGS) -c -I$(MALLOC_INCLUDE) $< -o $@
+	$(CC) $(CFLAGS) -c -I$(MALLOC_INCLUDE) -I$(LIBFT_INCLUDE) $< -o $@
 
 # Tests
 $(TEST_BIN): $(TEST_OBJ) $(MALLOC_BIN_SYM)
