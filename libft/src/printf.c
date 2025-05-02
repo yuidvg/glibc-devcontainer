@@ -25,17 +25,6 @@ static ssize_t	ft_putptr_fd(uintptr_t ptr, const char *base, int fd)
 	return (printed);
 }
 
-static ssize_t	ft_putsize_t_fd(size_t n, char *digits, int fd)
-{
-	ssize_t	printed;
-
-	printed = 0;
-	if (n >= 10)
-		printed += ft_putsize_t_fd(n / 10, digits, fd);
-	printed += ft_putchar_fd(digits[n % 10], fd);
-	return (printed);
-}
-
 ssize_t	putfmtd_fd(char exp, va_list ap, int fd)
 {
 	if (exp == 'c')
@@ -54,8 +43,6 @@ ssize_t	putfmtd_fd(char exp, va_list ap, int fd)
 		return (ft_putunbr_fd(va_arg(ap, unsigned int), UHEX_L, fd));
 	if (exp == 'X')
 		return (ft_putunbr_fd(va_arg(ap, unsigned int), UHEX_U, fd));
-	if (exp == 't')
-		return (ft_putsize_t_fd(va_arg(ap, size_t), UDECIMAL, fd));
 	if (exp == '%')
 		return (ft_putchar_fd('%', fd));
 	return (0);
