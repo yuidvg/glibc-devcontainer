@@ -9,6 +9,20 @@
                 "cwd": "${workspaceFolder}"
             },
             "group": {
+                "kind": "build"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "build-debug",
+            "type": "shell",
+            "command": "make debug",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
                 "kind": "build",
                 "isDefault": true
             },

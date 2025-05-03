@@ -102,9 +102,23 @@ ChunkHeader *findFittableFreeChunk(const size_t payloadSize, const Zone *const z
     return NULL;
 }
 
+ChunkHeader *findFree(ChunkHeader *const start, const void *const end)
+{
+    ChunkHeader *current = start;
+    while ((void *)current < end)
+    {
+        if (current->isFree)
+        {
+            return current;
+        }
+        current = toNext(current);
+    }
+    return NULL;
+}
+
 void splitChunk(ChunkHeader *const main, const size_t goalPayload)
 {
-    ChunkHeader *const rest = (ChunkHeader *const)offsetBytes(main, CHUNK_HEADER_SIZE + goalPayload);
+    ChunkHeader *const rest = (ChunkHeader *const)offsetBytes(chunkHeader2mem(main), goalPayload);
     rest->payloadSize = main->payloadSize - goalPayload - CHUNK_HEADER_SIZE;
     rest->isFree = true;
     main->payloadSize = goalPayload;
@@ -112,24 +126,47 @@ void splitChunk(ChunkHeader *const main, const size_t goalPayload)
 
 size_t consequtiveFreeChunksSize(const ChunkHeader *const start)
 {
-    const ChunkHeader *const zoneEnd = toZoneEnd(toZone(start));
-    size_t size = 0;
-    const ChunkHeader *current = start;
-    while (current < zoneEnd && current->isFree)
+    const Zone *const zone = toZone(start);
+    if (zone != NULL)
     {
-        size += toChunkSize(current);
-        current = toNext(current);
+        const ChunkHeader *const zoneEnd = toZoneEnd(zone);
+        size_t size = 0;
+        const ChunkHeader *current = start;
+        while (current < zoneEnd && current->isFree)
+        {
+            size += toChunkSize(current);
+            current = toNext(current);
+        }
+        return size;
     }
-    return size;
+    else
+    {
+        return 0;
+    }
 }
 
-bool expandChunk(ChunkHeader *const expandee, const size_t by)
+bool expand(ChunkHeader *const expandee, const size_t by)
 {
-    if (isAligned(by) && by > alignUp(1))
+    if (by % MALLOC_ALIGNMENT == 0)
     {
         expandee->payloadSize += by;
+        return true;
     }
     return false;
+}
+
+bool expandChunk(ChunkHeader *const expandee, const size_t minGoalPayloadSize)
+{
+    const size_t consequtiveFreeSize = consequtiveFreeChunksSize(toNext(expandee));
+    if (consequtiveFreeSize + expandee->payloadSize >= minGoalPayloadSize)
+    {
+        expand(expandee, consequtiveFreeSize);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 // largeChunk
@@ -211,11 +248,12 @@ LargeChunkHeader *createLargeChunk(const size_t reqSize)
     const AllocResult allocResult = allocateMemory(allocationSize);
     if (allocResult.succeeded)
     {
-        const size_t frontPadSize = distanceToNextAlignment(allocResult.allocatedMemoryAddress);
+        const size_t frontPadSize =
+            distanceToNextAlignment(offsetBytes(allocResult.allocatedMemoryAddress, LARGE_CHUNK_HEADER_SIZE));
         LargeChunkHeader *const newbie =
             (LargeChunkHeader *const)offsetBytes(allocResult.allocatedMemoryAddress, frontPadSize);
         newbie->frontPadSize = frontPadSize;
-        newbie->payloadSize = allocationSize - frontPadSize;
+        newbie->payloadSize = allocationSize - frontPadSize - LARGE_CHUNK_HEADER_SIZE;
         newbie->next = NULL;
         return newbie;
     }

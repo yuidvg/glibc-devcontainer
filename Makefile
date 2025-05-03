@@ -4,7 +4,7 @@ endif
 
 CC = gcc
 CFLAGS_COMMON = -Wall -Wextra -Werror  -std=c11
-CFLAGS_DEBUG = -g
+CFLAGS_DEBUG = -g -O0
 CFLAGS = $(CFLAGS_COMMON) $(CFLAGS_DEBUG)
 
 # Build Directories
@@ -48,9 +48,9 @@ LIBFT_INCLUDE = $(LIBFT_DIR)/include
 LIBFT_SRC = $(wildcard $(LIBFT_DIR)/*.c)
 
 
-#----------------------------------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------------------------------------#
 # Rules
-#----------------------------------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------------------------------------#
 all:  $(MALLOC_BIN) $(DEBUG_BIN) $(TEST_BIN)
 
 malloc: $(MALLOC_BIN_SYM)
@@ -61,6 +61,9 @@ test: $(TEST_BIN)
 
 run-test: $(TEST_BIN)
 	./$(TEST_BIN)
+
+debug-test: $(TEST_BIN)
+	gdb $(TEST_BIN)
 
 clean:
 	rm -rf $(DEBUG_BIN) $(DEBUG_OBJ) $(TEST_BIN) $(TEST_OBJ) $(MALLOC_BIN_SYM) $(MALLOC_BIN) $(MALLOC_OBJ)
@@ -73,9 +76,9 @@ re: clean
 
 # Debug
 $(DEBUG_BIN): $(DEBUG_OBJ) $(MALLOC_BIN_SYM)
-	$(CC) $(CFLAGS) -o $@ $(DEBUG_OBJ) -L$(BIN_DIR) -lft_malloc -Wl,-rpath=$(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $(DEBUG_OBJ) -L$(BIN_DIR) -lft_malloc -Wl,-rpath=$(BIN_DIR) -L$(LIBFT_DIR) -lft
 $(DEBUG_OBJ): $(DEBUG_OBJ_DIR)/%.o: $(DEBUG_DIR)/%.c
-	$(CC) $(CFLAGS) -c -I$(MALLOC_INCLUDE) $< -o $@
+	$(CC) $(CFLAGS) -c -I$(MALLOC_INCLUDE) -I$(LIBFT_INCLUDE) $< -o $@
 
 # Tests
 $(TEST_BIN): $(TEST_OBJ) $(MALLOC_BIN_SYM)
@@ -87,7 +90,7 @@ $(TEST_OBJ): $(TEST_OBJ_DIR)/%.o: $(TEST_DIR)/%.c
 $(MALLOC_BIN_SYM): $(MALLOC_BIN)
 	ln -sf $(notdir $(MALLOC_BIN)) $(MALLOC_BIN_SYM)
 $(MALLOC_BIN): $(LIBFT_BIN) $(MALLOC_OBJ)
-	$(CC) -shared -o $@ $(MALLOC_OBJ) -L$(LIBFT_DIR) -lft
+	$(CC) -shared -o $@ $(MALLOC_OBJ) -L$(LIBFT_DIR) -lft -Wl,--version-script=libft_malloc.map
 $(MALLOC_OBJ): $(MALLOC_OBJ_DIR)/%.o: $(MALLOC_DIR)/%.c
 	$(CC) $(CFLAGS) -I$(MALLOC_INCLUDE) -I$(LIBFT_INCLUDE) -fPIC -c $< -o $@
 
@@ -95,4 +98,4 @@ $(MALLOC_OBJ): $(MALLOC_OBJ_DIR)/%.o: $(MALLOC_DIR)/%.c
 $(LIBFT_BIN):
 	$(MAKE) -C $(LIBFT_DIR)
 
-#----------------------------------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------------------------------------#

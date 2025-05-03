@@ -1,10 +1,34 @@
 #include "all.h"
 
+static bool defragSection(ChunkHeader *const start, const void *const end)
+{
+    ChunkHeader *const first = findFree(toNext(start), end);
+    if (first != NULL)
+    {
+        expandChunk(first, CHUNK_MINIMUM_SIZE);
+        defragSection(toNext(first), end);
+        return true;
+    }
+    return false;
+}
+
+static bool defrag()
+{
+    if (zones.tiny.base != NULL && zones.small.base != NULL)
+    {
+        defragSection(toFirstChunk(&zones.tiny), toZoneEnd(&zones.tiny));
+        defragSection(toFirstChunk(&zones.small), toZoneEnd(&zones.small));
+        return true;
+    }
+    return false;
+}
+
 /* The main memory allocation function */
 void *ftMalloc(const size_t reqSize) // todo: pattern 0
 {
     if (reqSize <= SMALL_MAX_SIZE)
     {
+        defrag();
         if (zones.tiny.base != NULL && zones.small.base != NULL) // check if the zones are initialized
         {
             const size_t needForPayload = alignUp(reqSize);
@@ -21,13 +45,13 @@ void *ftMalloc(const size_t reqSize) // todo: pattern 0
                 if (fittable != NULL)
                 {
                     if (fittable->payloadSize >=
-                        needForPayload + CHUNK_MINIMUM_SIZE) // is largerFreeChunk big enough to split?
+                        needForPayload + CHUNK_MINIMUM_SIZE) // is fittable chunk big enough to split?
                     {                                        // yes - split it
                         splitChunk(fittable, needForPayload);
                         fittable->isFree = false;
                         return (chunkHeader2mem(fittable));
                     }
-                    else // no - just use the largerFreeChunk
+                    else // no - just use the fittable chunk
                     {
                         fittable->isFree = false;
                         return (chunkHeader2mem(fittable));
@@ -56,7 +80,7 @@ void *ftMalloc(const size_t reqSize) // todo: pattern 0
         }
         else
         {
-            perror("Failed to create large chunkß");
+            perror("Failed to create large chunk");
             return (NULL);
         }
     }

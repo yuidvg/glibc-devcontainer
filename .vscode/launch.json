@@ -1,20 +1,53 @@
 {
     "version": "0.2.0",
     "configurations": [
+        // ... existing configurations ...
         {
             "name": "debug-test",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/test.out",
+            "args": [
+                "--no-fork"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Follow child process after fork",
+                    "text": "-gdb-set follow-fork-mode child",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Keep both parent and child processes under GDB control",
+                    "text": "-gdb-set detach-on-fork off",
+                    "ignoreFailures": true
+                },
+            ],
+            "preLaunchTask": "build-test"
+        },
+        // ... other configurations ...
+        {
+            "name": "debug-malloc",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/debug.out",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "environment": [
-                {
-                    "name": "LD_LIBRARY_PATH",
-                    "value": "${workspaceFolder}/build/bin"
-                }
-            ],
             "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [
@@ -29,42 +62,7 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "build-test"
-        },
-        {
-            "name": "Debug malloc",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/test/malloc_test",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/test",
-            "environment": [
-                {
-                    "name": "LD_LIBRARY_PATH",
-                    "value": "${workspaceFolder}/build:${workspaceFolder}/build/math:${workspaceFolder}/build/elf:${workspaceFolder}/build/dlfcn:${workspaceFolder}/build/nss:${workspaceFolder}/build/nis:${workspaceFolder}/build/rt:${workspaceFolder}/build/resolv:${workspaceFolder}/build/mathvec:${workspaceFolder}/build/support:${workspaceFolder}/build/crypt:${workspaceFolder}/build/nptl"
-                }
-            ],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "preLaunchTask": "Build malloc_test",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Set disassembly flavor to Intel",
-                    "text": "-gdb-set disassembly-flavor intel",
-                    "ignoreFailures": true
-                }
-            ],
-            "sourceFileMap": {
-                "./malloc/": "/usr/src/glibc/glibc-2.35/",
-                "/build/buildd/glibc-2.35": "/usr/src/glibc/glibc-2.35",
-                "/usr/src/debug/glibc-2.35": "/usr/src/glibc/glibc-2.35"
-            },
+            "preLaunchTask": "build-debug"
         },
         {
             "name": "(gdb) Launch on current file",
