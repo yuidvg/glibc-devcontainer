@@ -102,6 +102,20 @@ ChunkHeader *findFittableFreeChunk(const size_t payloadSize, const Zone *const z
     return NULL;
 }
 
+ChunkHeader *findFree(ChunkHeader *const start, const void *const end)
+{
+    ChunkHeader *current = start;
+    while ((void *)current < end)
+    {
+        if (current->isFree)
+        {
+            return current;
+        }
+        current = toNext(current);
+    }
+    return NULL;
+}
+
 void splitChunk(ChunkHeader *const main, const size_t goalPayload)
 {
     ChunkHeader *const rest = (ChunkHeader *const)offsetBytes(chunkHeader2mem(main), goalPayload);
@@ -131,7 +145,7 @@ size_t consequtiveFreeChunksSize(const ChunkHeader *const start)
     }
 }
 
-bool expandChunk(ChunkHeader *const expandee, const size_t by)
+bool expand(ChunkHeader *const expandee, const size_t by)
 {
     if (by % MALLOC_ALIGNMENT == 0)
     {
@@ -139,6 +153,20 @@ bool expandChunk(ChunkHeader *const expandee, const size_t by)
         return true;
     }
     return false;
+}
+
+bool expandChunk(ChunkHeader *const expandee, const size_t minGoalPayloadSize)
+{
+    const size_t consequtiveFreeSize = consequtiveFreeChunksSize(toNext(expandee));
+    if (consequtiveFreeSize + expandee->payloadSize >= minGoalPayloadSize)
+    {
+        expand(expandee, consequtiveFreeSize);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 // largeChunk

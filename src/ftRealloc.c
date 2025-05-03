@@ -35,10 +35,8 @@ void *ftRealloc(const void *const originalMem, const size_t reqSize)
         {
             const size_t needForPayload = alignUp(reqSize);
             ChunkHeader *const originalChunk = findChunk(originalMem, zone);
-            size_t consequtiveFreeSize = consequtiveFreeChunksSize(toNext(originalChunk));
-            if (originalChunk->payloadSize + consequtiveFreeSize >= needForPayload) // can be expanded in-place
+            if (expandChunk(originalChunk, needForPayload)) // can be expanded in-place
             { // yes - expand in-place -> split to optimize
-                expandChunk(originalChunk, consequtiveFreeSize);
                 splitChunk(originalChunk, needForPayload);
                 return chunk2Mem(originalChunk);
             }

@@ -35,9 +35,11 @@ size_t toChunkSize(const ChunkHeader *const chunk);
 ChunkHeader *findChunk(const void *const mem, const Zone *const zone);
 const ChunkHeader *findFreeChunk(const size_t payloadSize, const Zone *const zone);
 ChunkHeader *findFittableFreeChunk(const size_t payloadSize, const Zone *const zone);
+ChunkHeader *findFree(ChunkHeader *const start, const void *const end);
 void splitChunk(ChunkHeader *const main, const size_t goalPayload);
 size_t consequtiveFreeChunksSize(const ChunkHeader *const start);
-bool expandChunk(ChunkHeader *const expandee, const size_t by);
+bool expand(ChunkHeader *const expandee, const size_t by);
+bool expandChunk(ChunkHeader *const expandee, const size_t minGoalPayloadSize);
 
 // utils/largeChunk
 void *largeChunk2Mem(const LargeChunkHeader *const header);

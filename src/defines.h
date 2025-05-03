@@ -1,7 +1,7 @@
 #pragma once
 #include "external.h"
 
-#define TINY_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 16) /* N: Size for tiny zones */
+#define TINY_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 128) /* N: Size for tiny zones */
 /* Size of allocation zones - tuned for at least 100 allocations per zone */
 #define SMALL_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 128) /* M: Size for small zones */
 
