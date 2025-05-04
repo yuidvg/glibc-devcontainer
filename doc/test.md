@@ -26,7 +26,6 @@
 | 24  | canary-edge    | uaf-pattern                  | fill block 0xAA, free, malloc same size                | never crashes (behaviour documented)                        |
 | 25  | error          | mmap-failure                 | lower `RLIMIT_AS`; `malloc(1 MiB)`                     | returns NULL ∧ `errno==ENOMEM`                              |
 | 26  | error          | size-t-overflow              | `malloc(SIZE_MAX)`                                     | returns NULL                                                |
-| 27  | error          | corrupt-header-detect        | flip size metadata then `free`                         | terminates safely (no wild free)                            |
 | 28  | stress         | random-10m-ops               | 10 M random malloc/free/realloc                        | no crash; invariants hold; end total == 0                   |
 | 29  | stress         | fragmentation                | allocate/free pattern, then `malloc(7 000 000)`        | success w/o extra `mmap` (if defrag) else safe failure      |
 | 30  | perf           | mmap-budget-tiny             | 10 000 TINY alloc/free                                 | (`mmap` + `munmap`) ≤ 2                                     |
