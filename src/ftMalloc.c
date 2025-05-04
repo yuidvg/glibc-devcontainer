@@ -59,14 +59,14 @@ void *ftMalloc(const size_t reqSize) // todo: pattern 0
                 }
                 else
                 {
-                    perror("No free chunk found");
+                    printError("No free chunk found");
                     return (NULL);
                 }
             }
         }
         else
         {
-            perror("Preallocated zones are not initialized correctly");
+            printError("Preallocated zones are not initialized correctly");
             return (NULL);
         }
     }
@@ -80,7 +80,7 @@ void *ftMalloc(const size_t reqSize) // todo: pattern 0
         }
         else
         {
-            perror("Failed to create large chunk");
+            printError("Failed to create large chunk");
             return (NULL);
         }
     }

@@ -259,7 +259,15 @@ LargeChunkHeader *createLargeChunk(const size_t reqSize)
     }
     else
     {
-        perror("Failed to allocate memory for ftMalloc");
+        printError("Failed to allocate memory for ftMalloc");
+        errno = ENOMEM;
         return (NULL);
     }
+}
+
+
+// error
+void printError(const char *const message)
+{
+    ft_dprintf(STDERR_FILENO, "Error: %s\n", message);
 }

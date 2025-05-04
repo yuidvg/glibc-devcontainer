@@ -30,12 +30,12 @@ __attribute__((constructor)) void initializePreAllocatedZones()
         }
         else
         {
-            perror("Failed to allocate memory for the small zone in constructor");
+            printError("Failed to allocate memory for the small zone in constructor");
         }
     }
     else
     {
-        perror("Failed to allocate memory for the management struct in constructor");
+        printError("Failed to allocate memory for the management struct in constructor");
     }
 }
 

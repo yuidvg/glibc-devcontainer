@@ -51,6 +51,9 @@ void push(LargeChunkHeader *newbie);
 bool pop(const LargeChunkHeader *const victim);
 LargeChunkHeader *createLargeChunk(const size_t memSize);
 
+// error
+void printError(const char *const message);
+
 // final functions
 void *ftMalloc(const size_t reqSize);
 void ftFree(const void *const mem);
