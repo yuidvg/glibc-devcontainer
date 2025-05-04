@@ -2,7 +2,8 @@
 
 void *malloc(size_t size)
 {
-    return ftMalloc(size);
+    void *ptr = ftMalloc(size);
+    return ptr;
 }
 
 void free(void *ptr)

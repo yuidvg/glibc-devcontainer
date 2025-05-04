@@ -57,14 +57,12 @@ size_t toChunkSize(const ChunkHeader *const chunk)
 ChunkHeader *findChunk(const void *const mem, const Zone *const zone)
 {
     ChunkHeader *current = toFirstChunk(zone);
-    size_t seenSize = 0;
-    while (seenSize < toChunkAreaSize(zone))
+    while ((void *)current < toZoneEnd(zone))
     {
         if (chunk2Mem(current) == mem)
         {
             return current;
         }
-        seenSize += toChunkSize(current);
         current = toNext(current);
     }
     return NULL;
@@ -73,14 +71,12 @@ ChunkHeader *findChunk(const void *const mem, const Zone *const zone)
 const ChunkHeader *findFreeChunk(const size_t payloadSize, const Zone *const zone)
 {
     ChunkHeader *current = toFirstChunk(zone);
-    size_t seenSize = 0;
-    while (seenSize < toChunkAreaSize(zone))
+    while ((void *)current < toZoneEnd(zone))
     {
         if (current->payloadSize == payloadSize && current->isFree)
         {
             return current;
         }
-        seenSize += toChunkSize(current);
         current = toNext(current);
     }
     return NULL;
@@ -89,14 +85,12 @@ const ChunkHeader *findFreeChunk(const size_t payloadSize, const Zone *const zon
 ChunkHeader *findFittableFreeChunk(const size_t payloadSize, const Zone *const zone)
 {
     ChunkHeader *current = toFirstChunk(zone);
-    size_t seenSize = 0;
-    while (seenSize < toChunkAreaSize(zone))
+    while ((void *)current < toZoneEnd(zone))
     {
         if (current->payloadSize >= payloadSize && current->isFree)
         {
             return current;
         }
-        seenSize += toChunkSize(current);
         current = toNext(current);
     }
     return NULL;
@@ -264,7 +258,6 @@ LargeChunkHeader *createLargeChunk(const size_t reqSize)
         return (NULL);
     }
 }
-
 
 // error
 void printError(const char *const message)

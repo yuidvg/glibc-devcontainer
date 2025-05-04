@@ -12,7 +12,7 @@ static bool defragSection(ChunkHeader *const start, const void *const end)
     return false;
 }
 
-static bool defrag()
+__attribute__((unused)) static bool defrag()
 {
     if (zones.tiny.base != NULL && zones.small.base != NULL)
     {
