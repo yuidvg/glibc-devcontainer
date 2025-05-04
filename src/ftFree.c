@@ -33,7 +33,7 @@ void ftFree(const void *const mem)
         }
         else
         {
-            perror("Invalid memory address");
+            printError("Invalid memory address");
         }
     }
 }
