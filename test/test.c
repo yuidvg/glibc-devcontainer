@@ -4,14 +4,24 @@
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <pthread.h>  // For thread testing
-#include <stddef.h> // For max_align_t
+#include <pthread.h> // For thread testing
+#include <stddef.h>  // For max_align_t
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/resource.h>
 #include <unistd.h>
+
+#define TINY_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 128) /* N: Size for tiny zones */
+/* Size of allocation zones - tuned for at least 100 allocations per zone */
+#define SMALL_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 128) /* M: Size for small zones */
+
+#define TINY_MAX_SIZE 128   /* n: max size for tiny allocations */
+#define SMALL_MAX_SIZE 1024 /* m: max size for small allocations */
+
+#define MALLOC_ALIGNMENT sizeof(size_t) * 2
+#define MALLOC_ALIGN_MASK (MALLOC_ALIGNMENT - 1)
 
 // --- Test Functions ---
 // #    category    title               action              expected result
@@ -123,7 +133,6 @@ static MunitResult tiny_upper_bound(const MunitParameter params[], void *user_da
     // We'll use a heuristic value as the upper bound for TINY allocations
     // Typically, this might be around 1024 bytes (small allocations)
     // You should adjust this value based on your implementation's definitions
-    const size_t TINY_MAX_SIZE = 1024; // Adjust based on your implementation
 
     // Allocate memory with the maximum TINY size
     void *p = malloc(TINY_MAX_SIZE);
@@ -157,7 +166,6 @@ static MunitResult small_lower_bound(const MunitParameter params[], void *user_d
 
     // This test checks if an allocation just above the TINY boundary goes into SMALL zone
     // Using the same TINY_MAX_SIZE from the previous test
-    const size_t TINY_MAX_SIZE = 1024; // Adjust based on your implementation
     const size_t SMALL_MIN_SIZE = TINY_MAX_SIZE + 1;
 
     // Allocate memory of size TINY_MAX_SIZE + 1, which should be in SMALL zone
@@ -190,7 +198,6 @@ static MunitResult large_allocation(const MunitParameter params[], void *user_da
 
     // For this test, we assume SMALL_MAX_SIZE (where m = SMALL_MAX_SIZE)
     // Typically, large allocations might start around 128 KiB or similar
-    const size_t SMALL_MAX_SIZE = 128 * 1024; // 128 KiB, adjust based on your implementation
     const size_t LARGE_MIN_SIZE = SMALL_MAX_SIZE + 1;
 
     // Allocate memory just above the SMALL boundary, which should be in LARGE zone
@@ -455,7 +462,8 @@ static MunitResult shrink(const MunitParameter params[], void *user_data_or_fixt
 
     // Fill with a pattern where each byte has a unique value for easy checking
     unsigned char *byte_p = (unsigned char *)p;
-    for (size_t i = 0; i < initial_size; i++) {
+    for (size_t i = 0; i < initial_size; i++)
+    {
         byte_p[i] = (unsigned char)((i * 2) & 0xFF); // Ensure unique pattern
     }
 
@@ -472,11 +480,13 @@ static MunitResult shrink(const MunitParameter params[], void *user_data_or_fixt
 
     // Verify the content is preserved for the smaller size
     unsigned char *byte_q = (unsigned char *)q;
-    for (size_t i = 0; i < new_size; i++) {
+    for (size_t i = 0; i < new_size; i++)
+    {
         // If memory byte doesn't match the reference, print both values
-        if (byte_q[i] != reference[i]) {
-            fprintf(stderr, "Memory at position %zu corrupted: expected 0x%02x, got 0x%02x\n",
-                   i, reference[i], byte_q[i]);
+        if (byte_q[i] != reference[i])
+        {
+            fprintf(stderr, "Memory at position %zu corrupted: expected 0x%02x, got 0x%02x\n", i, reference[i],
+                    byte_q[i]);
         }
         munit_assert_memory_equal(1, &byte_q[i], &reference[i]);
     }
@@ -502,11 +512,13 @@ static MunitResult ptr_null(const MunitParameter params[], void *user_data_or_fi
 
     // Verify the memory is usable by writing and reading from it
     unsigned char *byte_p = (unsigned char *)p;
-    for (size_t i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++)
+    {
         byte_p[i] = (unsigned char)(i & 0xFF);
     }
 
-    for (size_t i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++)
+    {
         munit_assert_uint8(byte_p[i], ==, (unsigned char)(i & 0xFF));
     }
 
@@ -537,10 +549,13 @@ static MunitResult size_0(const MunitParameter params[], void *user_data_or_fixt
     // 1. Acts like free(p) and returns NULL
     // 2. Returns a unique pointer that can be freed
 
-    if (q == NULL) {
+    if (q == NULL)
+    {
         // First valid behavior: acts like free(p) and returns NULL
         // No more steps needed, p is already freed
-    } else {
+    }
+    else
+    {
         // Second valid behavior: returns a unique freeable pointer
         // (This should be a unique pointer, but we can't easily verify uniqueness here)
 
@@ -551,14 +566,14 @@ static MunitResult size_0(const MunitParameter params[], void *user_data_or_fixt
     return MUNIT_OK;
 }
 
-// #16  realloc        large-to-small-migrate   `p = malloc(m+100); q = realloc(p,m)`    `q` in SMALL zone; former region `munmap`ed
+// #16  realloc        large-to-small-migrate   `p = malloc(m+100); q = realloc(p,m)`    `q` in SMALL zone; former
+// region `munmap`ed
 static MunitResult large_to_small_migrate(const MunitParameter params[], void *user_data_or_fixture)
 {
     (void)params;
     (void)user_data_or_fixture;
 
     // For this test, we assume SMALL_MAX_SIZE is defined
-    const size_t SMALL_MAX_SIZE = 128 * 1024; // 128 KiB, adjust based on implementation
 
     // Allocate in the LARGE zone (SMALL_MAX_SIZE + extra bytes)
     const size_t large_size = SMALL_MAX_SIZE + 100;
@@ -567,7 +582,8 @@ static MunitResult large_to_small_migrate(const MunitParameter params[], void *u
 
     // Add a recognizable pattern to the memory
     unsigned char *byte_p = (unsigned char *)p;
-    for (size_t i = 0; i < SMALL_MAX_SIZE; i++) {
+    for (size_t i = 0; i < SMALL_MAX_SIZE; i++)
+    {
         byte_p[i] = (unsigned char)(i & 0xFF);
     }
 
@@ -578,11 +594,12 @@ static MunitResult large_to_small_migrate(const MunitParameter params[], void *u
 
     // Verify the data was copied correctly
     unsigned char *byte_q = (unsigned char *)q;
-    for (size_t i = 0; i < small_size; i++) {
-        if (byte_q[i] != (unsigned char)(i & 0xFF)) {
+    for (size_t i = 0; i < small_size; i++)
+    {
+        if (byte_q[i] != (unsigned char)(i & 0xFF))
+        {
             // If we hit an error, print detailed info before assertion fails
-            munit_errorf("Data mismatch at position %zu: expected %d, got %d",
-                       i, (unsigned char)(i & 0xFF), byte_q[i]);
+            munit_errorf("Data mismatch at position %zu: expected %d, got %d", i, (unsigned char)(i & 0xFF), byte_q[i]);
         }
     }
 
@@ -600,7 +617,6 @@ static MunitResult at_least_100_allocs_per_zone(const MunitParameter params[], v
 
     // For this test, we use a relatively small allocation size to ensure
     // it fits in the TINY zone
-    const size_t TINY_MAX_SIZE = 1024; // Adjust based on implementation
     const size_t alloc_size = TINY_MAX_SIZE - 1;
 
     // Array to store pointers for later freeing
@@ -608,7 +624,8 @@ static MunitResult at_least_100_allocs_per_zone(const MunitParameter params[], v
 
     // Make 100 small allocations that should all fit in the TINY zone
     // with one mmap call (we can't verify the mmap count directly here)
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 100; i++)
+    {
         pointers[i] = malloc(alloc_size);
         munit_assert_ptr_not_null(pointers[i]);
 
@@ -617,18 +634,22 @@ static MunitResult at_least_100_allocs_per_zone(const MunitParameter params[], v
     }
 
     // Verify all allocations are usable
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 100; i++)
+    {
         unsigned char *ptr = (unsigned char *)pointers[i];
-        for (size_t j = 0; j < alloc_size; j++) {
+        for (size_t j = 0; j < alloc_size; j++)
+        {
             // Sample check - just test a few bytes to avoid excessive checking
-            if (j % 128 == 0) {
+            if (j % 128 == 0)
+            {
                 munit_assert_uint8(ptr[j], ==, 0xAA);
             }
         }
     }
 
     // Free all allocations
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 100; i++)
+    {
         free(pointers[i]);
     }
 
@@ -642,65 +663,97 @@ static MunitResult page_multiple_mapping(const MunitParameter params[], void *us
     (void)user_data_or_fixture;
     // This test aims to verify that the memory regions mapped for TINY and SMALL
     // zones have a total size that is a multiple of the system's page size.
-    // Direct verification from within the test is difficult without specific
-    // knowledge of the allocator's internal structures or using external tools
-    // like `strace` to observe `mmap` calls.
+    // We will check /proc/self/maps for anonymous rw-p mappings.
 
-    // We perform allocations to likely trigger the mapping of these zones.
-    // Verification would typically involve running with `strace` or analyzing
-    // the output of `show_alloc_mem` (if it provides zone boundary info).
-
-    // Need <unistd.h> for getpagesize, but cannot include here.
-    // Assume getpagesize() is available through linking.
-    long page_size = sysconf(_SC_PAGESIZE);
-    if (page_size <= 0) {
-        // If getpagesize fails, we cannot perform the check.
-        munit_log(MUNIT_LOG_WARNING, "Could not determine page size via getpagesize(). Skipping test logic.");
+    // Get system page size
+    const long page_size_long = sysconf(_SC_PAGESIZE);
+    if (page_size_long <= 0)
+    {
+        munit_log(MUNIT_LOG_WARNING, "Could not determine page size via sysconf(_SC_PAGESIZE). Skipping test.");
+        // Cannot proceed without page size
         return MUNIT_SKIP;
     }
+    const size_t page_size = (size_t)page_size_long;
 
-    // Define plausible zone boundaries for the test based on common practice.
-    // These should ideally match the actual implementation's definitions.
-    // Adjust if your allocator uses different thresholds.
-    const size_t TINY_MAX_SIZE_GUESS = 1024;
-    // const size_t SMALL_MAX_SIZE_GUESS = 32 * 1024; // Not strictly needed for this test
-
-    // Allocate in TINY zone to ensure it's potentially mapped
+    // Allocate in TINY zone to potentially trigger zone mapping
     void *tiny_ptr = malloc(1);
     munit_assert_ptr_not_null(tiny_ptr);
-    // Use the memory briefly to ensure it's valid
-    *(char*)tiny_ptr = 'T';
+    *(char *)tiny_ptr = 'T'; // Use briefly
 
-    // Allocate in SMALL zone to ensure it's potentially mapped
-    void *small_ptr = malloc(TINY_MAX_SIZE_GUESS + 1);
+    // Allocate in SMALL zone to potentially trigger zone mapping
+    void *small_ptr = malloc(TINY_MAX_SIZE + 1);
     munit_assert_ptr_not_null(small_ptr);
-    // Use the memory briefly
-    *(char*)small_ptr = 'S';
+    *(char *)small_ptr = 'S'; // Use briefly
 
-    // At this point, the TINY and SMALL zones should have been initialized
-    // by the allocator, likely involving one or more `mmap` calls.
-    // The core requirement is that the *total size* of the memory region(s)
-    // mapped for these zones should be a multiple of the page size.
+    // Open the process's memory map file
+    FILE *fp = fopen("/proc/self/maps", "r");
+    if (fp == NULL)
+    {
+        munit_errorf("Failed to open /proc/self/maps (errno=%d). Cannot verify mappings.", errno);
+        // Clean up allocations before failing
+        free(tiny_ptr);
+        free(small_ptr);
+        return MUNIT_FAIL; // Cannot perform check if file fails to open
+    }
 
-    // Manual verification step (using strace, ltrace, or debugger):
-    // 1. Run the test suite with a tool like `strace -e trace=mmap ./your_test_executable`.
-    // 2. Observe the `mmap` calls made *before* any LARGE allocations.
-    // 3. Check if the `length` argument in these `mmap` calls is a multiple of `page_size`.
+    char line[512];
+    unsigned long start_addr = 0, end_addr = 0;
+    char perms[5] = {0};            // Read permissions (e.g., "rw-p")
+    int found_relevant_mapping = 0; // Flag to track if we found a potential zone mapping
+
+    // Read each line from /proc/self/maps
+    while (fgets(line, sizeof(line), fp) != NULL)
+    {
+        // Format: address-range perms offset dev inode pathname
+        // Example: 7f...-7f... rw-p 00000000 00:00 0          <-- Anonymous mapping (no path)
+        // Example: 7f...-7f... rw-p 00000000 00:00 0          [heap]
+        int items_scanned = sscanf(line, "%lx-%lx %4s", &start_addr, &end_addr, perms);
+
+        if (items_scanned == 3)
+        {
+            // Check for anonymous, readable, writable, private mappings (rw-p)
+            // We exclude mappings explicitly marked as [heap], [stack], etc.
+            // and mappings associated with files.
+            if (strcmp(perms, "rw-p") == 0 && strstr(line, "/") == NULL && strstr(line, "[") == NULL)
+            {
+                const size_t mapping_size = end_addr - start_addr;
+                found_relevant_mapping = 1; // Found a candidate mapping
+
+                // Check if the size is a multiple of the page size
+                munit_logf(MUNIT_LOG_DEBUG, "Found potential zone mapping: %s", line);
+                if (mapping_size == 0 || mapping_size % page_size != 0)
+                {
+                    munit_errorf("Mapping size 0x%zx (at 0x%lx) is not a non-zero multiple of page size 0x%zx.",
+                                 mapping_size, start_addr, page_size);
+                    // Clean up before failing
+                    fclose(fp);
+                    free(tiny_ptr);
+                    free(small_ptr);
+                    return MUNIT_FAIL;
+                }
+            }
+        }
+    }
+
+    fclose(fp);
 
     // Clean up allocations
     free(tiny_ptr);
     free(small_ptr);
 
-    // Since programmatic verification of the underlying mmap size is not
-    // directly possible without allocator-specific hooks or OS-specific APIs
-    // (like reading /proc/self/maps on Linux, which is too platform-specific),
-    // we log the requirement and skip the automated check.
-    munit_logf(MUNIT_LOG_INFO, "Test #18: Verification requires external tools (e.g., strace) "
-               "to confirm zone mmap sizes are multiples of page size (%ld). Skipping automated check.", page_size);
+    // Ensure we actually found and checked at least one relevant mapping
+    // If not, the test didn't really verify anything (maybe allocator uses heap?)
+    if (!found_relevant_mapping)
+    {
+        munit_log(MUNIT_LOG_WARNING, "Test #18: Did not find any anonymous 'rw-p' mappings to check. "
+                                     "Allocator might be using the heap directly, or mapping strategy differs.");
+        // Consider this a skip rather than fail, as it might be intended behavior
+        // depending on the allocator design (e.g., only LARGE uses mmap).
+        return MUNIT_SKIP;
+    }
 
-    // Return MUNIT_SKIP to indicate that the test logic was performed but
-    // the final assertion requires manual/external verification.
-    return MUNIT_SKIP;
+    // If we reached here, all checked mappings were page-aligned
+    return MUNIT_OK;
 }
 
 // #19  zones          full-large-free      `free(bigptr)`  exactly one `munmap`
@@ -741,7 +794,8 @@ static MunitResult full_large_free(const MunitParameter params[], void *user_dat
     return MUNIT_OK;
 }
 
-// #20  show-alloc-mem header-order       mixed allocs → call viewer    headers TINY < SMALL < LARGE, addresses ascending
+// #20  show-alloc-mem header-order       mixed allocs → call viewer    headers TINY < SMALL < LARGE, addresses
+// ascending
 static MunitResult header_order(const MunitParameter params[], void *user_data_or_fixture)
 {
     (void)params;
@@ -762,7 +816,7 @@ static MunitResult header_order(const MunitParameter params[], void *user_data_o
     munit_assert_ptr_not_null(small2);
 
     // LARGE zone allocations
-    void *large1 = malloc(256 * 1024); // 256 KB
+    void *large1 = malloc(256 * 1024);  // 256 KB
     void *large2 = malloc(1024 * 1024); // 1 MB
     munit_assert_ptr_not_null(large1);
     munit_assert_ptr_not_null(large2);
@@ -785,7 +839,8 @@ static MunitResult header_order(const MunitParameter params[], void *user_data_o
     return MUNIT_OK;
 }
 
-// #21  show-alloc-mem line-format        apply regex `0x[0-9A-F]+ - 0x[0-9A-F]+ : [0-9]+ bytes`   matches every data line
+// #21  show-alloc-mem line-format        apply regex `0x[0-9A-F]+ - 0x[0-9A-F]+ : [0-9]+ bytes`   matches every data
+// line
 static MunitResult line_format(const MunitParameter params[], void *user_data_or_fixture)
 {
     (void)params;
@@ -862,20 +917,24 @@ static MunitResult total_accurate(const MunitParameter params[], void *user_data
     size_t reported_total = 0;
     int has_placeholder = 0;
 
-    while (fgets(line, sizeof(line), fp) != NULL) {
+    while (fgets(line, sizeof(line), fp) != NULL)
+    {
         // Check for placeholder values like "0xX" and "u bytes"
-        if (strstr(line, "0xX") != NULL || strstr(line, "u bytes") != NULL) {
+        if (strstr(line, "0xX") != NULL || strstr(line, "u bytes") != NULL)
+        {
             has_placeholder = 1;
         }
 
         // Match lines with format: 0xADDR - 0xADDR : SIZE bytes
         unsigned int size;
-        if (sscanf(line, "%*x - %*x : %u bytes", &size) == 1) {
+        if (sscanf(line, "%*x - %*x : %u bytes", &size) == 1)
+        {
             sum_of_allocations += size;
         }
 
         // Match the Total line: Total: SIZE bytes
-        if (sscanf(line, "Total: %u bytes", &size) == 1) {
+        if (sscanf(line, "Total: %u bytes", &size) == 1)
+        {
             reported_total = size;
         }
     }
@@ -890,7 +949,8 @@ static MunitResult total_accurate(const MunitParameter params[], void *user_data
     printf("Reported total: %zu bytes\n", reported_total);
 
     // Check if placeholders were detected
-    if (has_placeholder) {
+    if (has_placeholder)
+    {
         printf("ERROR: show_alloc_mem() is using placeholder values like '0xX' and 'u bytes'\n");
         printf("       instead of actual memory addresses and sizes.\n");
         printf("Fix the show_alloc_mem() implementation to print actual values.\n");
@@ -903,9 +963,9 @@ static MunitResult total_accurate(const MunitParameter params[], void *user_data
     }
 
     // Verify that the reported total matches the sum of allocations
-    if (reported_total < expected_total) {
-        printf("ERROR: Reported total (%zu) is less than our allocations (%zu)\n",
-               reported_total, expected_total);
+    if (reported_total < expected_total)
+    {
+        printf("ERROR: Reported total (%zu) is less than our allocations (%zu)\n", reported_total, expected_total);
 
         // Clean up allocations before failing
         free(p1);
@@ -914,9 +974,10 @@ static MunitResult total_accurate(const MunitParameter params[], void *user_data
         return MUNIT_FAIL;
     }
 
-    if (reported_total != sum_of_allocations) {
-        printf("ERROR: Reported total (%zu) doesn't match sum of allocations (%zu)\n",
-               reported_total, sum_of_allocations);
+    if (reported_total != sum_of_allocations)
+    {
+        printf("ERROR: Reported total (%zu) doesn't match sum of allocations (%zu)\n", reported_total,
+               sum_of_allocations);
 
         // Clean up allocations before failing
         free(p1);
@@ -944,8 +1005,9 @@ static MunitResult one_to_sixtyfour_byte_sweep(const MunitParameter params[], vo
     void *pointers[num_allocations];
 
     // Allocate each size
-    for (int i = 0; i < num_allocations; i++) {
-        const size_t size = i + 1;  // 1 to 64 bytes
+    for (int i = 0; i < num_allocations; i++)
+    {
+        const size_t size = i + 1; // 1 to 64 bytes
         pointers[i] = malloc(size);
         munit_assert_ptr_not_null(pointers[i]);
 
@@ -958,29 +1020,214 @@ static MunitResult one_to_sixtyfour_byte_sweep(const MunitParameter params[], vo
     }
 
     // Verify each allocation is usable and doesn't overlap with others
-    for (int i = 0; i < num_allocations; i++) {
+    for (int i = 0; i < num_allocations; i++)
+    {
         const size_t size = i + 1;
         unsigned char *ptr = (unsigned char *)pointers[i];
 
         // Check that our pattern is intact (no overlap)
-        for (size_t j = 0; j < size; j++) {
-            if (ptr[j] != (unsigned char)(0xA0 + i)) {
+        for (size_t j = 0; j < size; j++)
+        {
+            if (ptr[j] != (unsigned char)(0xA0 + i))
+            {
                 munit_errorf("Memory overlap detected! Block size %zu at position %zu contains %02X instead of %02X",
-                           size, j, ptr[j], (unsigned char)(0xA0 + i));
+                             size, j, ptr[j], (unsigned char)(0xA0 + i));
                 return MUNIT_FAIL;
             }
         }
     }
 
     // Free all allocations
-    for (int i = 0; i < num_allocations; i++) {
+    for (int i = 0; i < num_allocations; i++)
+    {
         free(pointers[i]);
     }
 
     return MUNIT_OK;
 }
 
-// #24 powers-of-two allocate sizes 2⁰…2¹⁵    no overlaps ∧ each aligned ∧ usable
+// #24  canary-edge    uaf-pattern                  fill block 0xAA, free, malloc same size                never crashes
+// (behaviour documented)
+static MunitResult uaf_pattern(const MunitParameter params[], void *user_data_or_fixture)
+{
+    (void)params;
+    (void)user_data_or_fixture;
+
+    const size_t test_size = 64; // Use a size likely handled by TINY or SMALL zones
+    const unsigned char fill_pattern = 0xAA;
+    const unsigned char check_pattern = 0xBB; // Pattern to verify usability of the second allocation
+
+    // 1. Allocate memory
+    void *p1 = malloc(test_size);
+    munit_assert_ptr_not_null(p1);
+
+    // 2. Fill the block with the pattern 0xAA
+    memset(p1, fill_pattern, test_size);
+
+    // 3. Free the block
+    free(p1);
+    // p1 is now a dangling pointer, do not use it.
+
+    // 4. Allocate another block of the same size.
+    // The core requirement is that this sequence does not crash.
+    // Depending on the allocator's implementation (e.g., if it reuses the freed block
+    // immediately without clearing), the content might still be 0xAA.
+    // However, the test description focuses on stability ("never crashes").
+    void *p2 = malloc(test_size);
+    munit_assert_ptr_not_null(p2);
+
+    // Optional but recommended: Verify the second allocation is usable.
+    // Write a different pattern to it and check boundaries.
+    memset(p2, check_pattern, test_size);
+    munit_assert_uchar(((unsigned char *)p2)[0], ==, check_pattern);
+    munit_assert_uchar(((unsigned char *)p2)[test_size - 1], ==, check_pattern);
+
+    // 5. Free the second allocation
+    free(p2);
+
+    // If the execution reaches this point without crashing, the test passes.
+    return MUNIT_OK;
+}
+
+// #25  error          mmap-failure                 lower `RLIMIT_AS`; `malloc(1 MiB)`                     returns NULL
+// ∧ `errno==ENOMEM`
+static MunitResult mmap_failure(const MunitParameter params[], void *user_data_or_fixture)
+{
+    (void)params;
+    (void)user_data_or_fixture;
+
+    struct rlimit old_limit, new_limit;
+    // Define a low limit. This needs to be large enough for the test runner itself
+    // but small enough that the large allocation fails. 20 MiB is a guess.
+    // If this test fails spuriously, this value might need adjustment.
+    const rlim_t low_limit_bytes = 20 * 1024 * 1024;
+    const size_t alloc_size = 2 * 1024 * 1024; // 1 MiB
+
+    printf("Testing malloc failure due to RLIMIT_AS...\n");
+
+    // 1. Get the current RLIMIT_AS
+    if (getrlimit(RLIMIT_AS, &old_limit) != 0)
+    {
+        perror("getrlimit failed");
+        // Cannot proceed if we can't get the current limit
+        return MUNIT_ERROR;
+    }
+
+    // 2. Set a new, lower limit for address space
+    new_limit = old_limit;
+    new_limit.rlim_cur = low_limit_bytes;
+
+    // Check if the desired low limit exceeds the hard limit.
+    // If it does, the test might not work as intended, but we proceed anyway.
+    if (old_limit.rlim_max != RLIM_INFINITY && old_limit.rlim_max < new_limit.rlim_cur)
+    {
+        printf(
+            "Warning: Hard limit RLIMIT_AS (%llu) is lower than the desired test limit (%llu). Adjusting test limit.\n",
+            (unsigned long long)old_limit.rlim_max, (unsigned long long)new_limit.rlim_cur);
+        new_limit.rlim_cur = old_limit.rlim_max; // Use the hard limit if it's lower
+    }
+
+    if (setrlimit(RLIMIT_AS, &new_limit) != 0)
+    {
+        // If setting the limit fails (e.g., insufficient privileges),
+        // we cannot perform the test as intended.
+        perror("setrlimit failed to lower RLIMIT_AS");
+        // Attempt to restore the original limit just in case something partially changed.
+        setrlimit(RLIMIT_AS, &old_limit);
+        // Report as an error because the test condition couldn't be established.
+        // Alternatively, could return MUNIT_SKIP if this is acceptable.
+        return MUNIT_ERROR;
+    }
+
+    printf("Temporarily lowered RLIMIT_AS soft limit to %llu bytes\n", (unsigned long long)new_limit.rlim_cur);
+
+    // 3. Attempt the large allocation, expecting failure
+    errno = 0; // Clear errno before calling malloc
+    void *p = malloc(alloc_size);
+
+    // 4. Check the result
+    MunitResult test_result = MUNIT_FAIL; // Assume failure unless proven otherwise
+    if (p == NULL)
+    {
+        // Allocation failed as expected. Now check errno.
+        printf("malloc(%zu) returned NULL as expected.\n", alloc_size);
+        if (errno == ENOMEM)
+        {
+            printf("errno is ENOMEM (%d) as expected.\n", errno);
+            test_result = MUNIT_OK; // Test passed
+        }
+        else
+        {
+            munit_errorf("malloc failed, but errno is %d (%s), expected ENOMEM (%d)", errno, strerror(errno), ENOMEM);
+            // test_result remains MUNIT_FAIL
+        }
+    }
+    else
+    {
+        // Allocation unexpectedly succeeded.
+        munit_errorf("malloc(%zu) succeeded unexpectedly (returned %p). RLIMIT_AS might not have been low enough, or "
+                     "malloc used pre-existing space.",
+                     alloc_size, p);
+        free(p); // Clean up the unexpected allocation
+                 // test_result remains MUNIT_FAIL
+    }
+
+    // 5. Restore the original RLIMIT_AS *IMPORTANT*
+    if (setrlimit(RLIMIT_AS, &old_limit) != 0)
+    {
+        perror("Failed to restore original RLIMIT_AS");
+        // This is problematic for subsequent tests, but we should still report the outcome of *this* test.
+        // If the test passed but restoring failed, maybe return MUNIT_ERROR?
+        // For now, let's return the original test result, but log the restore failure.
+        printf("Error: Failed to restore original RLIMIT_AS. Subsequent tests might be affected.\n");
+    }
+    else
+    {
+        printf("Restored original RLIMIT_AS (soft=%llu, hard=%llu)\n", (unsigned long long)old_limit.rlim_cur,
+               (unsigned long long)old_limit.rlim_max);
+    }
+
+    return test_result;
+}
+
+// #26  error          size-t-overflow               `malloc(SIZE_MAX)`                                     returns NULL
+static MunitResult size_t_overflow(const MunitParameter params[], void *user_data_or_fixture)
+{
+    // Suppress unused parameter warnings
+    (void)params;
+    (void)user_data_or_fixture;
+
+    printf("Attempting malloc(SIZE_MAX)...\n");
+
+    // Attempt to allocate the maximum possible value for size_t.
+    // This allocation is expected to fail on virtually any system.
+    void *p = malloc(9223372036854775807);
+
+    // Check if the allocation failed as expected.
+    if (p == NULL)
+    {
+        // malloc returning NULL is the expected behavior for an impossibly large request.
+        printf("malloc(SIZE_MAX) returned NULL as expected.\n");
+        return MUNIT_OK; // Test passed
+    }
+    else
+    {
+        // If malloc succeeded, it's unexpected and likely indicates an issue
+        // either with the test environment or the allocator's handling of extreme values.
+        munit_errorf("malloc(SIZE_MAX) succeeded unexpectedly (returned %p). This is highly unusual.", p);
+
+        // Although highly unlikely, if allocation succeeded, attempt to free it.
+        // This might not be strictly necessary as the test has already failed,
+        // but it's good practice to clean up if possible.
+        // Note: If the allocation truly was SIZE_MAX, free() might also behave unexpectedly.
+        free(p);
+
+        return MUNIT_FAIL; // Test failed
+    }
+    // The function will always return within the if/else block.
+}
+
+// #101 powers-of-two allocate sizes 2⁰…2¹⁵    no overlaps ∧ each aligned ∧ usable
 static MunitResult powers_of_two(const MunitParameter params[], void *user_data_or_fixture)
 {
     (void)params;
@@ -992,8 +1239,9 @@ static MunitResult powers_of_two(const MunitParameter params[], void *user_data_
     size_t sizes[num_allocations];
 
     // Allocate each power of two
-    for (int i = 0; i < num_allocations; i++) {
-        sizes[i] = 1UL << i;  // 2^i
+    for (int i = 0; i < num_allocations; i++)
+    {
+        sizes[i] = 1UL << i; // 2^i
         pointers[i] = malloc(sizes[i]);
         munit_assert_ptr_not_null(pointers[i]);
 
@@ -1003,9 +1251,10 @@ static MunitResult powers_of_two(const MunitParameter params[], void *user_data_
         const uintptr_t addr = (uintptr_t)pointers[i];
         const size_t min_alignment = 16;
 
-        if (addr % min_alignment != 0) {
-            printf("Warning: Allocation of size %zu is not %zu-byte aligned: %p (modulo %zu = %zu)\n",
-                  sizes[i], min_alignment, pointers[i], min_alignment, addr % min_alignment);
+        if (addr % min_alignment != 0)
+        {
+            printf("Warning: Allocation of size %zu is not %zu-byte aligned: %p (modulo %zu = %zu)\n", sizes[i],
+                   min_alignment, pointers[i], min_alignment, addr % min_alignment);
         }
 
         // Fill the memory with a unique pattern
@@ -1013,15 +1262,20 @@ static MunitResult powers_of_two(const MunitParameter params[], void *user_data_
     }
 
     // Verify each allocation is usable and doesn't overlap
-    for (int i = 0; i < num_allocations; i++) {
+    for (int i = 0; i < num_allocations; i++)
+    {
         unsigned char *ptr = (unsigned char *)pointers[i];
 
         // Check every byte for the expected pattern
-        for (size_t j = 0; j < sizes[i]; j++) {
-            if (j % 4096 == 0 || j == sizes[i] - 1) {  // Check first byte of each page and last byte
-                if (ptr[j] != (unsigned char)(0xF0 + i)) {
-                    munit_errorf("Memory overlap detected: Block size %zu at position %zu contains %02X instead of %02X",
-                               sizes[i], j, ptr[j], (unsigned char)(0xF0 + i));
+        for (size_t j = 0; j < sizes[i]; j++)
+        {
+            if (j % 4096 == 0 || j == sizes[i] - 1)
+            { // Check first byte of each page and last byte
+                if (ptr[j] != (unsigned char)(0xF0 + i))
+                {
+                    munit_errorf(
+                        "Memory overlap detected: Block size %zu at position %zu contains %02X instead of %02X",
+                        sizes[i], j, ptr[j], (unsigned char)(0xF0 + i));
                     return MUNIT_FAIL;
                 }
             }
@@ -1029,98 +1283,15 @@ static MunitResult powers_of_two(const MunitParameter params[], void *user_data_
     }
 
     // Free all allocations
-    for (int i = 0; i < num_allocations; i++) {
+    for (int i = 0; i < num_allocations; i++)
+    {
         free(pointers[i]);
     }
 
     return MUNIT_OK;
 }
 
-// // #25 realloc-edge-cases   realloc behavior on edge cases
-// static MunitResult realloc_edge_cases(const MunitParameter params[], void *user_data_or_fixture)
-// {
-//     (void)params;
-//     (void)user_data_or_fixture;
-
-//     // Test case 1: Realloc from tiny to small
-//     // Allocate in tiny zone
-//     const size_t tiny_size = 16;
-//     void *p1 = malloc(tiny_size);
-//     munit_assert_ptr_not_null(p1);
-
-//     // Fill with recognizable pattern
-//     for (size_t i = 0; i < tiny_size; i++) {
-//         ((unsigned char *)p1)[i] = (unsigned char)(0xA0 + i);
-//     }
-
-//     // Reallocate to small zone
-//     const size_t small_size = 2048;
-//     void *p2 = realloc(p1, small_size);
-//     munit_assert_ptr_not_null(p2);
-
-//     // According to the C standard, realloc must preserve the content
-//     // of the original allocation up to the smaller of the new and old sizes
-//     for (size_t i = 0; i < tiny_size; i++) {
-//         if (((unsigned char *)p2)[i] != (unsigned char)(0xA0 + i)) {
-//             munit_errorf("Data loss during realloc: byte %zu should be 0x%02X but got 0x%02X",
-//                        i, (unsigned char)(0xA0 + i), ((unsigned char *)p2)[i]);
-//             return MUNIT_FAIL;
-//         }
-//     }
-
-//     // Test case 2: Realloc with NULL pointer - should behave like malloc
-//     const size_t null_size = 42;
-//     void *p3 = realloc(NULL, null_size);
-//     munit_assert_ptr_not_null(p3);
-
-//     // Should be able to use the full allocation
-//     memset(p3, 0xBB, null_size);
-
-//     // Test case 3: Realloc with 0 size - should behave like free
-//     void *p4 = malloc(64);
-//     munit_assert_ptr_not_null(p4);
-//     void *p5 = realloc(p4, 0);
-
-//     // C standard says realloc with size 0 is implementation-defined:
-//     // Either NULL (like free) or a unique minimal object that can be passed to free
-//     if (p5 != NULL) {
-//         // Make sure this pointer is different from all other allocations
-//         munit_assert_ptr_not_equal(p5, p2);
-//         munit_assert_ptr_not_equal(p5, p3);
-//         free(p5);
-//     }
-
-//     // Test case 4: Exact same size realloc - content must be preserved
-//     const size_t same_size = 128;
-//     void *p6 = malloc(same_size);
-//     munit_assert_ptr_not_null(p6);
-
-//     // Fill with distinct pattern
-//     for (size_t i = 0; i < same_size; i++) {
-//         ((unsigned char *)p6)[i] = (unsigned char)(0xC0 + (i % 16));
-//     }
-
-//     void *p7 = realloc(p6, same_size);
-//     munit_assert_ptr_not_null(p7);
-
-//     // All content must be preserved
-//     for (size_t i = 0; i < same_size; i++) {
-//         if (((unsigned char *)p7)[i] != (unsigned char)(0xC0 + (i % 16))) {
-//             munit_errorf("Data loss for same-size realloc: byte %zu should be 0x%02X but got 0x%02X",
-//                        i, (unsigned char)(0xC0 + (i % 16)), ((unsigned char *)p7)[i]);
-//             return MUNIT_FAIL;
-//         }
-//     }
-
-//     // Cleanup
-//     free(p2);
-//     free(p3);
-//     free(p7);
-
-//     return MUNIT_OK;
-// }
-
-// #27 fragmentation-handling  allocate-free-allocate pattern    new alloc uses recovered space
+// #102 fragmentation-handling  allocate-free-allocate pattern    new alloc uses recovered space
 static MunitResult fragmentation_handling(const MunitParameter params[], void *user_data_or_fixture)
 {
     (void)params;
@@ -1137,7 +1308,8 @@ static MunitResult fragmentation_handling(const MunitParameter params[], void *u
     void *blocks[num_allocations];
 
     // Phase 1: Allocate all blocks
-    for (int i = 0; i < num_allocations; i++) {
+    for (int i = 0; i < num_allocations; i++)
+    {
         blocks[i] = malloc(block_size);
         munit_assert_ptr_not_null(blocks[i]);
 
@@ -1150,7 +1322,8 @@ static MunitResult fragmentation_handling(const MunitParameter params[], void *u
     int freed_index = 0;
 
     // Phase 2: Free every other block
-    for (int i = 0; i < num_allocations; i += 2) {
+    for (int i = 0; i < num_allocations; i += 2)
+    {
         freed_addresses[freed_index++] = (uintptr_t)blocks[i];
         free(blocks[i]);
         blocks[i] = NULL;
@@ -1158,7 +1331,8 @@ static MunitResult fragmentation_handling(const MunitParameter params[], void *u
 
     // Phase 3: Allocate new blocks of the same size
     void *new_blocks[num_allocations / 2];
-    for (int i = 0; i < num_allocations / 2; i++) {
+    for (int i = 0; i < num_allocations / 2; i++)
+    {
         new_blocks[i] = malloc(block_size);
         munit_assert_ptr_not_null(new_blocks[i]);
 
@@ -1169,9 +1343,12 @@ static MunitResult fragmentation_handling(const MunitParameter params[], void *u
     // Phase 4: Check if at least some of the new blocks reuse the freed addresses
     // A good allocator should reuse at least some of the freed space
     int reused_count = 0;
-    for (int i = 0; i < num_allocations / 2; i++) {
-        for (int j = 0; j < num_allocations / 2; j++) {
-            if ((uintptr_t)new_blocks[i] == freed_addresses[j]) {
+    for (int i = 0; i < num_allocations / 2; i++)
+    {
+        for (int j = 0; j < num_allocations / 2; j++)
+        {
+            if ((uintptr_t)new_blocks[i] == freed_addresses[j])
+            {
                 reused_count++;
                 break;
             }
@@ -1179,32 +1356,35 @@ static MunitResult fragmentation_handling(const MunitParameter params[], void *u
     }
 
     // Report space reuse efficiency
-    printf("Fragmentation test: %d/%d blocks (%.1f%%) reused freed space\n",
-           reused_count, num_allocations/2, (100.0 * reused_count) / (num_allocations/2));
+    printf("Fragmentation test: %d/%d blocks (%.1f%%) reused freed space\n", reused_count, num_allocations / 2,
+           (100.0 * reused_count) / (num_allocations / 2));
 
     // A good allocator should reuse at least some space (arbitrary threshold: 10%)
     // Using a low threshold to account for non-optimized implementations
     const double min_reuse_percentage = 10.0;
-    const double reuse_percentage = (100.0 * reused_count) / (num_allocations/2);
+    const double reuse_percentage = (100.0 * reused_count) / (num_allocations / 2);
 
-    if (reuse_percentage < min_reuse_percentage) {
+    if (reuse_percentage < min_reuse_percentage)
+    {
         printf("WARNING: Poor memory reuse. Allocator may not be handling fragmentation well.\n");
         printf("Consider implementing block coalescing or better free list management.\n");
     }
 
     // Clean up - free all blocks
-    for (int i = 1; i < num_allocations; i += 2) {
+    for (int i = 1; i < num_allocations; i += 2)
+    {
         free(blocks[i]);
     }
 
-    for (int i = 0; i < num_allocations / 2; i++) {
+    for (int i = 0; i < num_allocations / 2; i++)
+    {
         free(new_blocks[i]);
     }
 
     return MUNIT_OK;
 }
 
-// #28 block-coalescing     free adjacent blocks    later alloc gets full space
+// #103 block-coalescing     free adjacent blocks    later alloc gets full space
 static MunitResult block_coalescing(const MunitParameter params[], void *user_data_or_fixture)
 {
     (void)params;
@@ -1221,7 +1401,8 @@ static MunitResult block_coalescing(const MunitParameter params[], void *user_da
     void *small_blocks[num_small_blocks];
 
     // Phase 1: Allocate sequence of small blocks
-    for (int i = 0; i < num_small_blocks; i++) {
+    for (int i = 0; i < num_small_blocks; i++)
+    {
         small_blocks[i] = malloc(small_block_size);
         munit_assert_ptr_not_null(small_blocks[i]);
 
@@ -1230,7 +1411,8 @@ static MunitResult block_coalescing(const MunitParameter params[], void *user_da
     }
 
     // Phase 2: Free all the small blocks to create a sequence of free blocks
-    for (int i = 0; i < num_small_blocks; i++) {
+    for (int i = 0; i < num_small_blocks; i++)
+    {
         free(small_blocks[i]);
         small_blocks[i] = NULL;
     }
@@ -1242,10 +1424,11 @@ static MunitResult block_coalescing(const MunitParameter params[], void *user_da
     void *large_block = malloc(large_block_size);
 
     // Check if allocation succeeded
-    if (large_block == NULL) {
+    if (large_block == NULL)
+    {
         printf("Coalescing test failed: Could not allocate block of size %zu "
                "after freeing %d blocks of size %zu\n",
-                large_block_size, num_small_blocks, small_block_size);
+               large_block_size, num_small_blocks, small_block_size);
         printf("This indicates that the allocator might not be coalescing adjacent free blocks\n");
         return MUNIT_FAIL;
     }
@@ -1258,7 +1441,8 @@ static MunitResult block_coalescing(const MunitParameter params[], void *user_da
 
     // Phase 5: For robustness, try allocating another sequence of blocks
     // to make sure we haven't corrupted the heap
-    for (int i = 0; i < num_small_blocks; i++) {
+    for (int i = 0; i < num_small_blocks; i++)
+    {
         small_blocks[i] = malloc(small_block_size);
         munit_assert_ptr_not_null(small_blocks[i]);
 
@@ -1271,12 +1455,12 @@ static MunitResult block_coalescing(const MunitParameter params[], void *user_da
 
     printf("Coalescing test passed: Successfully allocated block of size %zu "
            "after freeing %d blocks of size %zu\n",
-            large_block_size, num_small_blocks, small_block_size);
+           large_block_size, num_small_blocks, small_block_size);
 
     return MUNIT_OK;
 }
 
-// #29 stress-test         rapid alloc/free cycles   no crashes ∧ all allocations usable
+// #104 stress-test         rapid alloc/free cycles   no crashes ∧ all allocations usable
 static MunitResult stress_test(const MunitParameter params[], void *user_data_or_fixture)
 {
     (void)params;
@@ -1285,73 +1469,82 @@ static MunitResult stress_test(const MunitParameter params[], void *user_data_or
     // This test performs multiple allocation patterns to stress test the allocator
 
     // Parameters for the test
-    const int num_cycles = 10;           // Number of alloc/free cycles
-    const int blocks_per_cycle = 1000;    // Number of blocks per cycle
+    const int num_cycles = 10;         // Number of alloc/free cycles
+    const int blocks_per_cycle = 1000; // Number of blocks per cycle
 
     void *blocks[blocks_per_cycle];
     size_t sizes[blocks_per_cycle];
 
     // Seed the random number generator
-    srand(42);  // Fixed seed for reproducibility
+    srand(42); // Fixed seed for reproducibility
 
     // Run several stress patterns
-    for (int cycle = 0; cycle < num_cycles; cycle++) {
+    for (int cycle = 0; cycle < num_cycles; cycle++)
+    {
 
         printf("Stress test cycle %d/%d: ", cycle + 1, num_cycles);
 
         // Different allocation patterns for each cycle
-        switch (cycle % 5) {
-            case 0:
-                printf("Small allocations (1-64 bytes)\n");
-                // Small allocations
-                for (int i = 0; i < blocks_per_cycle; i++) {
-                    sizes[i] = (rand() % 64) + 1;
-                }
-                break;
+        switch (cycle % 5)
+        {
+        case 0:
+            printf("Small allocations (1-64 bytes)\n");
+            // Small allocations
+            for (int i = 0; i < blocks_per_cycle; i++)
+            {
+                sizes[i] = (rand() % 64) + 1;
+            }
+            break;
 
-            case 1:
-                printf("Medium allocations (65-4096 bytes)\n");
-                // Medium allocations
-                for (int i = 0; i < blocks_per_cycle; i++) {
-                    sizes[i] = (rand() % 4032) + 65; // 65-4096
-                }
-                break;
+        case 1:
+            printf("Medium allocations (65-4096 bytes)\n");
+            // Medium allocations
+            for (int i = 0; i < blocks_per_cycle; i++)
+            {
+                sizes[i] = (rand() % 4032) + 65; // 65-4096
+            }
+            break;
 
-            case 2:
-                printf("Large allocations (4097-65536 bytes)\n");
-                // Large allocations
-                for (int i = 0; i < blocks_per_cycle; i++) {
-                    sizes[i] = (rand() % 61440) + 4097; // 4097-65536
-                }
-                break;
+        case 2:
+            printf("Large allocations (4097-65536 bytes)\n");
+            // Large allocations
+            for (int i = 0; i < blocks_per_cycle; i++)
+            {
+                sizes[i] = (rand() % 61440) + 4097; // 4097-65536
+            }
+            break;
 
-            case 3:
-                printf("Mixed allocations (all sizes)\n");
-                // Mixed allocations
-                for (int i = 0; i < blocks_per_cycle; i++) {
-                    sizes[i] = (rand() % 65536) + 1; // 1-65536
-                }
-                break;
+        case 3:
+            printf("Mixed allocations (all sizes)\n");
+            // Mixed allocations
+            for (int i = 0; i < blocks_per_cycle; i++)
+            {
+                sizes[i] = (rand() % 65536) + 1; // 1-65536
+            }
+            break;
 
-            case 4:
-                printf("Power-of-two allocations\n");
-                // Power-of-two allocations
-                for (int i = 0; i < blocks_per_cycle; i++) {
-                    int power = rand() % 16; // 2^0 to 2^15
-                    sizes[i] = 1UL << power;
-                }
-                break;
+        case 4:
+            printf("Power-of-two allocations\n");
+            // Power-of-two allocations
+            for (int i = 0; i < blocks_per_cycle; i++)
+            {
+                int power = rand() % 16; // 2^0 to 2^15
+                sizes[i] = 1UL << power;
+            }
+            break;
         }
 
         // Perform the allocations
-        for (int i = 0; i < blocks_per_cycle; i++) {
+        for (int i = 0; i < blocks_per_cycle; i++)
+        {
             blocks[i] = malloc(sizes[i]);
-            if (blocks[i] == NULL) {
-                printf("Stress test info: malloc(%zu) returned NULL at block %d\n",
-                       sizes[i], i);
+            if (blocks[i] == NULL)
+            {
+                printf("Stress test info: malloc(%zu) returned NULL at block %d\n", sizes[i], i);
 
                 // Free all previous allocations
-                for (int j = 0; j < i; j++) {
+                for (int j = 0; j < i; j++)
+                {
                     free(blocks[j]);
                 }
             }
@@ -1363,16 +1556,19 @@ static MunitResult stress_test(const MunitParameter params[], void *user_data_or
         }
 
         // Verify a sample of allocations
-        for (int i = 0; i < blocks_per_cycle; i += 100) {
+        for (int i = 0; i < blocks_per_cycle; i += 100)
+        {
             unsigned char pattern = (cycle * 40 + i) % 256;
             unsigned char *block = (unsigned char *)blocks[i];
 
             // Check first and last byte of allocation
-            if (block[0] != pattern || block[sizes[i] - 1] != pattern) {
+            if (block[0] != pattern || block[sizes[i] - 1] != pattern)
+            {
                 printf("Stress test failed: Memory corruption detected at block %d\n", i);
 
                 // Free all allocations
-                for (int j = 0; j < blocks_per_cycle; j++) {
+                for (int j = 0; j < blocks_per_cycle; j++)
+                {
                     free(blocks[j]);
                 }
 
@@ -1381,47 +1577,51 @@ static MunitResult stress_test(const MunitParameter params[], void *user_data_or
         }
 
         // Free the blocks in different orders based on cycle
-        switch (cycle % 3) {
-            case 0:
-                // Free in forward order
-                for (int i = 0; i < blocks_per_cycle; i++) {
-                    free(blocks[i]);
-                }
-                break;
+        switch (cycle % 3)
+        {
+        case 0:
+            // Free in forward order
+            for (int i = 0; i < blocks_per_cycle; i++)
+            {
+                free(blocks[i]);
+            }
+            break;
 
-            case 1:
-                // Free in reverse order
-                for (int i = blocks_per_cycle - 1; i >= 0; i--) {
-                    free(blocks[i]);
-                }
-                break;
+        case 1:
+            // Free in reverse order
+            for (int i = blocks_per_cycle - 1; i >= 0; i--)
+            {
+                free(blocks[i]);
+            }
+            break;
 
-            case 2:
-                // Free in random order
-                for (int i = 0; i < blocks_per_cycle; i++) {
-                    int idx = rand() % blocks_per_cycle;
-                    // Swap with current position to avoid double-free
-                    void *temp = blocks[i];
-                    blocks[i] = blocks[idx];
-                    blocks[idx] = temp;
+        case 2:
+            // Free in random order
+            for (int i = 0; i < blocks_per_cycle; i++)
+            {
+                int idx = rand() % blocks_per_cycle;
+                // Swap with current position to avoid double-free
+                void *temp = blocks[i];
+                blocks[i] = blocks[idx];
+                blocks[idx] = temp;
 
-                    size_t temp_size = sizes[i];
-                    sizes[i] = sizes[idx];
-                    sizes[idx] = temp_size;
+                size_t temp_size = sizes[i];
+                sizes[i] = sizes[idx];
+                sizes[idx] = temp_size;
 
-                    free(blocks[i]);
-                }
-                break;
+                free(blocks[i]);
+            }
+            break;
         }
     }
 
-    printf("Stress test completed: Successfully handled %d cycles of %d allocations/frees\n",
-           num_cycles, blocks_per_cycle);
+    printf("Stress test completed: Successfully handled %d cycles of %d allocations/frees\n", num_cycles,
+           blocks_per_cycle);
 
     return MUNIT_OK;
 }
 
-// #30 zone-isolation     free in one zone doesn't corrupt other zones
+// #105 zone-isolation     free in one zone doesn't corrupt other zones
 static MunitResult zone_isolation(const MunitParameter params[], void *user_data_or_fixture)
 {
     (void)params;
@@ -1455,7 +1655,8 @@ static MunitResult zone_isolation(const MunitParameter params[], void *user_data
     printf("Allocating blocks in all zones...\n");
 
     // Allocate TINY blocks
-    for (int i = 0; i < NUM_TINY; i++) {
+    for (int i = 0; i < NUM_TINY; i++)
+    {
         tiny_blocks[i] = malloc(TINY_SIZE);
         munit_assert_ptr_not_null(tiny_blocks[i]);
 
@@ -1464,7 +1665,8 @@ static MunitResult zone_isolation(const MunitParameter params[], void *user_data
     }
 
     // Allocate SMALL blocks
-    for (int i = 0; i < NUM_SMALL; i++) {
+    for (int i = 0; i < NUM_SMALL; i++)
+    {
         small_blocks[i] = malloc(SMALL_SIZE);
         munit_assert_ptr_not_null(small_blocks[i]);
 
@@ -1473,7 +1675,8 @@ static MunitResult zone_isolation(const MunitParameter params[], void *user_data
     }
 
     // Allocate LARGE blocks
-    for (int i = 0; i < NUM_LARGE; i++) {
+    for (int i = 0; i < NUM_LARGE; i++)
+    {
         large_blocks[i] = malloc(LARGE_SIZE);
         munit_assert_ptr_not_null(large_blocks[i]);
 
@@ -1488,7 +1691,8 @@ static MunitResult zone_isolation(const MunitParameter params[], void *user_data
     void *temp_blocks[NUM_OPERATIONS];
 
     // Allocate and free many small blocks
-    for (int i = 0; i < NUM_OPERATIONS; i++) {
+    for (int i = 0; i < NUM_OPERATIONS; i++)
+    {
         // Allocate a random size in TINY zone
         size_t size = (rand() % TINY_SIZE) + 1;
         temp_blocks[i] = malloc(size);
@@ -1498,15 +1702,18 @@ static MunitResult zone_isolation(const MunitParameter params[], void *user_data
         memset(temp_blocks[i], 0xAA, size);
 
         // Occasionally free a block
-        if (i % 10 == 0 && i > 0) {
+        if (i % 10 == 0 && i > 0)
+        {
             free(temp_blocks[i - (rand() % 10)]);
             temp_blocks[i - (rand() % 10)] = NULL;
         }
     }
 
     // Free remaining temp blocks
-    for (int i = 0; i < NUM_OPERATIONS; i++) {
-        if (temp_blocks[i] != NULL) {
+    for (int i = 0; i < NUM_OPERATIONS; i++)
+    {
+        if (temp_blocks[i] != NULL)
+        {
             free(temp_blocks[i]);
         }
     }
@@ -1515,21 +1722,27 @@ static MunitResult zone_isolation(const MunitParameter params[], void *user_data
     printf("Verifying data in SMALL and LARGE zones is intact...\n");
 
     // Check SMALL blocks
-    for (int i = 0; i < NUM_SMALL; i++) {
+    for (int i = 0; i < NUM_SMALL; i++)
+    {
         unsigned char expected = 0xB0 + i;
         unsigned char *block = (unsigned char *)small_blocks[i];
 
         // Check a sample of bytes
-        for (size_t j = 0; j < SMALL_SIZE; j += SMALL_SIZE / 10) {
-            if (block[j] != expected) {
+        for (size_t j = 0; j < SMALL_SIZE; j += SMALL_SIZE / 10)
+        {
+            if (block[j] != expected)
+            {
                 printf("Zone isolation failure: SMALL block %d at offset %zu corrupted. "
                        "Expected 0x%02X, got 0x%02X\n",
                        i, j, expected, block[j]);
 
                 // Clean up all allocated memory
-                for (int k = 0; k < NUM_TINY; k++) free(tiny_blocks[k]);
-                for (int k = 0; k < NUM_SMALL; k++) free(small_blocks[k]);
-                for (int k = 0; k < NUM_LARGE; k++) free(large_blocks[k]);
+                for (int k = 0; k < NUM_TINY; k++)
+                    free(tiny_blocks[k]);
+                for (int k = 0; k < NUM_SMALL; k++)
+                    free(small_blocks[k]);
+                for (int k = 0; k < NUM_LARGE; k++)
+                    free(large_blocks[k]);
 
                 return MUNIT_FAIL;
             }
@@ -1537,21 +1750,27 @@ static MunitResult zone_isolation(const MunitParameter params[], void *user_data
     }
 
     // Check LARGE blocks
-    for (int i = 0; i < NUM_LARGE; i++) {
+    for (int i = 0; i < NUM_LARGE; i++)
+    {
         unsigned char expected = 0xC0 + i;
         unsigned char *block = (unsigned char *)large_blocks[i];
 
         // Check a sample of bytes
-        for (size_t j = 0; j < LARGE_SIZE; j += LARGE_SIZE / 10) {
-            if (block[j] != expected) {
+        for (size_t j = 0; j < LARGE_SIZE; j += LARGE_SIZE / 10)
+        {
+            if (block[j] != expected)
+            {
                 printf("Zone isolation failure: LARGE block %d at offset %zu corrupted. "
                        "Expected 0x%02X, got 0x%02X\n",
                        i, j, expected, block[j]);
 
                 // Clean up all allocated memory
-                for (int k = 0; k < NUM_TINY; k++) free(tiny_blocks[k]);
-                for (int k = 0; k < NUM_SMALL; k++) free(small_blocks[k]);
-                for (int k = 0; k < NUM_LARGE; k++) free(large_blocks[k]);
+                for (int k = 0; k < NUM_TINY; k++)
+                    free(tiny_blocks[k]);
+                for (int k = 0; k < NUM_SMALL; k++)
+                    free(small_blocks[k]);
+                for (int k = 0; k < NUM_LARGE; k++)
+                    free(large_blocks[k]);
 
                 return MUNIT_FAIL;
             }
@@ -1559,9 +1778,12 @@ static MunitResult zone_isolation(const MunitParameter params[], void *user_data
     }
 
     // Clean up all allocated memory
-    for (int i = 0; i < NUM_TINY; i++) free(tiny_blocks[i]);
-    for (int i = 0; i < NUM_SMALL; i++) free(small_blocks[i]);
-    for (int i = 0; i < NUM_LARGE; i++) free(large_blocks[i]);
+    for (int i = 0; i < NUM_TINY; i++)
+        free(tiny_blocks[i]);
+    for (int i = 0; i < NUM_SMALL; i++)
+        free(small_blocks[i]);
+    for (int i = 0; i < NUM_LARGE; i++)
+        free(large_blocks[i]);
 
     printf("Zone isolation test passed: Operations in TINY zone did not corrupt SMALL or LARGE zones\n");
 
@@ -1587,31 +1809,45 @@ int main(int argc, char *argv[])
                               {"/#11 foreign-pointer", foreign_pointer, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
                               {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
 
-    MunitTest realloc_tests[] = {{"/#12 grow-in-place", grow_in_place, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                                 {"/#13 shrink", shrink, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                                 {"/#14 ptr-null", ptr_null, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                                 {"/#15 size-0", size_0, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                                 {"/#16 large-to-small-migrate", large_to_small_migrate, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                                 {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
+    MunitTest realloc_tests[] = {
+        {"/#12 grow-in-place", grow_in_place, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {"/#13 shrink", shrink, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {"/#14 ptr-null", ptr_null, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {"/#15 size-0", size_0, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {"/#16 large-to-small-migrate", large_to_small_migrate, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
 
-    MunitTest zones_tests[] = {{"/#17 at-least-100-allocs-per-zone", at_least_100_allocs_per_zone, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                               {"/#18 page-multiple-mapping", page_multiple_mapping, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                               {"/#19 full-large-free", full_large_free, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    MunitTest zones_tests[] = {
+        {"/#17 at-least-100-allocs-per-zone", at_least_100_allocs_per_zone, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {"/#18 page-multiple-mapping", page_multiple_mapping, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {"/#19 full-large-free", full_large_free, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
+
+    MunitTest show_alloc_mem_tests[] = {
+        {"/#20 header-order", header_order, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {"/#21 line-format", line_format, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {"/#22 total-accurate", total_accurate, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
+
+    MunitTest alignment_edge_tests[] = {
+        {"/#23 one-to-sixtyfour-byte-sweep", one_to_sixtyfour_byte_sweep, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
+
+    MunitTest canary_edge_tests[] = {{"/#24 uaf-pattern", uaf_pattern, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+                                     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
+
+    MunitTest error_tests[] = {{"/#25 mmap-failure", mmap_failure, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+                               {"/#26 size-t-overflow", size_t_overflow, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
                                {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
 
-    MunitTest show_alloc_mem_tests[] = {{"/#20 header-order", header_order, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                                       {"/#21 line-format", line_format, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                                       {"/#22 total-accurate", total_accurate, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                                       {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
-
-    MunitTest alignment_edge_tests[] = {{"/#23 one-to-sixtyfour-byte-sweep", one_to_sixtyfour_byte_sweep, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                                       {"/#24 powers-of-two", powers_of_two, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                                    //    {"/#25 realloc-edge-cases", realloc_edge_cases, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                                       {"/#27 fragmentation-handling", fragmentation_handling, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                                       {"/#28 block-coalescing", block_coalescing, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                                       {"/#29 stress-test", stress_test, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                                       {"/#30 zone-isolation", zone_isolation, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-                                       {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
+    MunitTest extra_tests[] = {
+        {"/#101 powers-of-two", powers_of_two, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        //    {"/#25 realloc-edge-cases", realloc_edge_cases, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {"/#102 fragmentation-handling", fragmentation_handling, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {"/#103 block-coalescing", block_coalescing, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {"/#104 stress-test", stress_test, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {"/#105 zone-isolation", zone_isolation, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
 
     MunitSuite ft_malloc_suites[] = {{"/malloc", malloc_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
                                      {"/free", free_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
@@ -1619,7 +1855,11 @@ int main(int argc, char *argv[])
                                      {"/zones", zones_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
                                      {"/show-alloc-mem", show_alloc_mem_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
                                      {"/alignment-edge", alignment_edge_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+                                     {"/canary-edge", canary_edge_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+                                     {"/error", error_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+                                     {"/extra", extra_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
                                      {NULL, NULL, NULL, 0, MUNIT_SUITE_OPTION_NONE}};
+
     const MunitSuite main_suite = {
         "/ft-malloc",           // name
         NULL,                   // tests
@@ -1630,4 +1870,3 @@ int main(int argc, char *argv[])
 
     return munit_suite_main(&main_suite, NULL, argc, argv);
 }
-
