@@ -6,6 +6,7 @@ CC = gcc
 CFLAGS_COMMON = -Wall -Wextra -Werror  -std=c11
 CFLAGS_DEBUG = -g -O0
 CFLAGS = $(CFLAGS_COMMON) $(CFLAGS_DEBUG)
+MAKE = make
 
 # Build Directories
 BUILD_DIR = build

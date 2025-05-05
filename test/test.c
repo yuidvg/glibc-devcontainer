@@ -1216,25 +1216,27 @@ static MunitResult random_500_ops(const MunitParameter params[], void *user_data
         int op = rand() % 3; // 0: malloc, 1: free, 2: realloc
         switch (op)
         {
-        case 0:
+        case 0: {
             // malloc
             size_t size = (rand() % 6000) + 1; // 1 to 6000 bytes
             blocks[i] = malloc(size);
             munit_assert_ptr_not_null(blocks[i]);
-            break;
+        }
+        break;
         case 1:
             // free
             free(blocks[i]);
             blocks[i] = NULL;
             break;
-        case 2:
+        case 2: {
             // realloc
             // size_t new_size = (rand() % 6000) + 1; // 1 to 6000 bytes
             // blocks[i] = malloc(new_size);
             size_t new_size = (rand() % 6000) + 1; // 1 to 6000 bytes
             blocks[i] = realloc(blocks[i], new_size);
             munit_assert_ptr_not_null(blocks[i]);
-            break;
+        }
+        break;
         }
     }
 

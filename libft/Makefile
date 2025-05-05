@@ -1,6 +1,6 @@
 #Compiler Preferences
 CC = cc
-CFLAGS = -Wall -Werror -Wextra
+CFLAGS = -Wall -Werror -Wextra -fPIC
 CFLAGS_LEAK = -g -fsanitize=leak
 CFLAGS_DEBUG = -g -DDEBUG
 
