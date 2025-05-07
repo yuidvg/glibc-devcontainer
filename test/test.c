@@ -1191,15 +1191,15 @@ static MunitResult powers_of_two(const MunitParameter params[], void *user_data_
     return MUNIT_OK;
 }
 
-// #28  stress         random-500-ops               | 500 random malloc/free/realloc                        | no crash;
+// #28  stress         random-10k-ops               | 10k random malloc/free/realloc                        | no crash;
 // invariants hold; end total == 0                   |
-static MunitResult random_500_ops(const MunitParameter params[], void *user_data_or_fixture)
+static MunitResult random_10k_ops(const MunitParameter params[], void *user_data_or_fixture)
 {
     (void)params;
     (void)user_data_or_fixture;
 
-    const int num_ops = 500;        // 1k operations
-    const int num_blocks = 500;     // Number of blocks to allocate
+    const int num_ops = 10000;        // 10k operations
+    const int num_blocks = 10000;     // Number of blocks to allocate
     const size_t block_size = 1024; // 1 KiB blocks
 
     // Allocate initial blocks
@@ -2181,7 +2181,7 @@ int main(int argc, char *argv[])
     MunitTest error_tests[] = {{"/#26 size-t-overflow", size_t_overflow, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
                                {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
     MunitTest stress_tests[] = {
-        {"/#28 random-500-ops", random_500_ops, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+        {"/#28 random-10k-ops", random_10k_ops, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
         {"/#29 fragmentation", fragmentation_stress_test, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 
         {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
