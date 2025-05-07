@@ -1982,7 +1982,157 @@ static MunitResult zone_isolation(const MunitParameter params[], void *user_data
     return MUNIT_OK;
 }
 
+// Numeric tests
+static void printForNumericTest(char *s)
+{
+    write(1, s, strlen(s));
+}
+// #201 test0
+static MunitResult test1(const MunitParameter params[], void *user_data_or_fixture)
+{
+    (void)params;
+    (void)user_data_or_fixture;
+    int i;
+    char *addr;
+
+    i = 0;
+    while (i < 1024)
+    {
+        addr = (char *)malloc(1024);
+        if (addr == NULL)
+        {
+            printForNumericTest("Failed to allocate memory\n");
+            return MUNIT_FAIL;
+        }
+        addr[0] = 42;
+        i++;
+    }
+    return MUNIT_OK;
+}
+
+// #202 test2
 // --- Main Function ---
+static MunitResult test2(const MunitParameter params[], void *user_data_or_fixture)
+{
+    (void)params;
+    (void)user_data_or_fixture;
+    int i;
+    char *addr;
+
+    i = 0;
+    while (i < 1024)
+    {
+        addr = (char *)malloc(1024);
+        if (addr == NULL)
+        {
+            // The original test2.c printed "Failed to allocate memory\n".
+            // MUnit will report the test failure, so a direct print is not needed here.
+            return MUNIT_FAIL;
+        }
+        addr[0] = 42;
+        free(addr); // This was part of the original test2.c logic
+        i++;
+    }
+    return MUNIT_OK;
+}
+
+// #203 test3
+static MunitResult test3(const MunitParameter params[], void *user_data_or_fixture)
+{
+    (void)params;
+    (void)user_data_or_fixture;
+
+    const size_t M = 1024 * 1024;
+    char *addr1;
+    char *addr2;
+    char *addr3;
+
+    addr1 = (char *)malloc(16 * M);
+    if (addr1 == NULL)
+    {
+        printForNumericTest("Failed to allocate memory\n");
+        exit(1);
+    }
+    strcpy(addr1, "Hello world!\n");
+    printForNumericTest(addr1);
+    addr2 = (char *)malloc(16 * M);
+    if (addr2 == NULL)
+    {
+        printForNumericTest("Failed to allocate memory\n");
+        exit(1);
+    }
+    addr3 = (char *)realloc(addr1, 128 * M);
+    if (addr3 == NULL)
+    {
+        printForNumericTest("Failed to reallocate memory\n");
+        exit(1);
+    }
+    addr3[127 * M] = 42;
+    printForNumericTest(addr3);
+
+    return MUNIT_OK;
+}
+
+// #204 test4
+static MunitResult test4(const MunitParameter params[], void *user_data_or_fixture)
+{
+    (void)params;
+    (void)user_data_or_fixture;
+
+    const size_t M = 1024 * 1024;
+    __attribute__((unused)) void *a = malloc(1);
+    __attribute__((unused)) void *b = malloc(2);
+    __attribute__((unused)) void *c = malloc(4);
+    __attribute__((unused)) void *d = malloc(8);
+    __attribute__((unused)) void *e = malloc(16);
+    __attribute__((unused)) void *f = malloc(32);
+    __attribute__((unused)) void *g = malloc(64);
+    __attribute__((unused)) void *h = malloc(128);
+    __attribute__((unused)) void *i = malloc(256);
+    __attribute__((unused)) void *j = malloc(512);
+    __attribute__((unused)) void *k = malloc(1024);
+    __attribute__((unused)) void *l = malloc(1024 * 2);
+    __attribute__((unused)) void *m = malloc(1024 * 4);
+    __attribute__((unused)) void *n = malloc(1024 * 32);
+    __attribute__((unused)) void *o = malloc(M);
+    __attribute__((unused)) void *p = malloc(16 * M);
+    __attribute__((unused)) void *q = malloc(128 * M);
+    show_alloc_mem();
+
+    return MUNIT_OK;
+}
+
+
+// #205 test5
+static MunitResult test5(const MunitParameter params[], void *user_data_or_fixture)
+{
+    (void)params;
+    (void)user_data_or_fixture;
+
+    int i;
+    int alignment;
+    char *addr;
+
+    i = 1;
+    alignment = 2 * sizeof(size_t);
+    while (i <= 100)
+    {
+        addr = (char *)malloc(i);
+        if (addr == NULL)
+        {
+            printForNumericTest("Failed to allocate memory\n");
+            exit(1);
+        }
+        if ((((unsigned long)(addr)) % alignment) != 0)
+        {
+            printForNumericTest("malloc returned a non aligned boundary\n");
+            exit(1);
+        }
+        i++;
+        free(addr);
+    }
+    return MUNIT_OK;
+}
 
 int main(int argc, char *argv[])
 {
@@ -2049,6 +2199,13 @@ int main(int argc, char *argv[])
         {"/#105 zone-isolation", zone_isolation, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
         {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
 
+    MunitTest numeric_tests[] = {{"/#201 test1", test1, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+                                 {"/#202 test2", test2, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+                                 {"/#203 test3", test3, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+                                 {"/#204 test4", test4, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+                                 {"/#205 test5", test5, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+                                 {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
+
     MunitSuite ft_malloc_suites[] = {{"/malloc", malloc_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
                                      {"/free", free_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
                                      {"/realloc", realloc_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
@@ -2060,6 +2217,7 @@ int main(int argc, char *argv[])
                                      {"/stress", stress_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
                                      {"/perf", perf_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
                                      {"/extra", extra_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+                                     {"/numeric", numeric_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
                                      {NULL, NULL, NULL, 0, MUNIT_SUITE_OPTION_NONE}};
 
     const MunitSuite main_suite = {
