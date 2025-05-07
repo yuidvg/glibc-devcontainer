@@ -59,8 +59,17 @@ void *ftMalloc(const size_t reqSize) // todo: pattern 0
                 }
                 else
                 {
-                    printError("No free chunk found");
-                    return (NULL);
+                    LargeChunkHeader *const largeChunkHeader = createLargeChunk(reqSize);
+                    if (largeChunkHeader != NULL)
+                    {
+                        push(largeChunkHeader);
+                        return (largeChunk2Mem(largeChunkHeader));
+                    }
+                    else
+                    {
+                        printError("Failed to create large chunk(but for tiny/small zones fallback)");
+                        return (NULL);
+                    }
                 }
             }
         }
