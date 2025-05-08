@@ -25,7 +25,7 @@
 | 23  | alignment-edge | one-to-sixtyfour-byte-sweep  | allocate sizes 1…64                                    | no overlaps ∧ each aligned                                  |
 | 24  | canary-edge    | uaf-pattern                  | fill block 0xAA, free, malloc same size                | never crashes (behaviour documented)                        |
 | 26  | error          | size-t-overflow              | `malloc(SIZE_MAX)`                                     | returns NULL                                                |
-| 28  | stress         | random-500-ops               | 500 random malloc/free/realloc                         | no crash; invariants hold; end total == 0                   |
+| 28  | stress         | random-10k-ops               | 10k random malloc/free/realloc                         | no crash; invariants hold; end total == 0                   |
 | 29  | stress         | fragmentation                | allocate/free pattern, then `malloc(7 000 000)`        | success w/o extra `mmap` (if defrag) else safe failure      |
 | 30  | perf           | mmap-budget-tiny             | 10 000 TINY alloc/free                                 | (`mmap` + `munmap`) ≤ 2                                     |
 | 31  | perf           | latency                      | benchmark 1 M malloc/free(16)                          | mean ≤ 3 x glibc                                            |

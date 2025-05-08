@@ -3,7 +3,7 @@
 
 #define TINY_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 128) /* N: Size for tiny zones */
 /* Size of allocation zones - tuned for at least 100 allocations per zone */
-#define SMALL_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 180) /* M: Size for small zones */
+#define SMALL_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 220) /* M: Size for small zones */
 
 #define TINY_MAX_SIZE 128   /* n: max size for tiny allocations */
 #define SMALL_MAX_SIZE 1024 /* m: max size for small allocations */

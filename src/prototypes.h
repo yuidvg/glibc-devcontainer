@@ -9,7 +9,7 @@
 
 #define mem2largeChunkHeader(memPointer) ((LargeChunkHeader *)(offsetBytes(memPointer, -sizeof(LargeChunkHeader))))
 
-#define reqsize2AllocationSize(reqsize) (MALLOC_ALIGN_MASK + sizeof(ChunkHeader) + (reqsize))
+#define reqsize2AllocationSize(reqsize) (MALLOC_ALIGN_MASK + sizeof(LargeChunkHeader) + (reqsize))
 #define reqsize2alignedChunkSize(reqsize) (sizeof(ChunkHeader) + (reqsize))
 #define isAligned(pointer) (((unsigned long)(pointer) & MALLOC_ALIGN_MASK) == 0)
 

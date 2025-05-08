@@ -29,7 +29,7 @@ TEST_OBJ_DIR = $(OBJ_DIR)/test
 TEST_OBJ = $(patsubst $(TEST_DIR)/%.c,$(TEST_OBJ_DIR)/%.o,$(TEST_SRC))
 
 TEST_DIR = test
-TEST_SRC = $(wildcard $(TEST_DIR)/*.c)
+TEST_SRC = $(TEST_DIR)/test.c $(TEST_DIR)/munit.c
 
 # Malloc
 MALLOC_BIN = $(BIN_DIR)/libft_malloc_$(HOSTTYPE).so
