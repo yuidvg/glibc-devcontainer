@@ -10,9 +10,24 @@ static ssize_t ft_putsize_t_fd(size_t n, char *digits, int fd)
     return (printed);
 }
 
+static ssize_t ft_putPtr(const uintptr_t ptr)
+{
+    ssize_t printed;
+    const char *const base = "0123456789ABCDEF";
+
+    printed = 0;
+    if (ptr >= 16)
+        printed += ft_putPtr(ptr / 16);
+    printed += ft_putchar_fd(base[ptr % 16], STDOUT_FILENO);
+    return (printed);
+}
+
 static size_t print_mem_block(const void *const mem, const size_t size)
 {
-    ft_printf("%P - %P : ", (unsigned long)mem, (unsigned long)offsetBytes(mem, size));
+    ft_putPtr((uintptr_t)mem);
+    ft_printf(" - ");
+    ft_putPtr((uintptr_t)offsetBytes(mem, size));
+    ft_printf(" : ");
     ft_putsize_t_fd(size, "0123456789", 1);
     ft_printf(" bytes\n");
     return size;
