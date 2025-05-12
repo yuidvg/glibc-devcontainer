@@ -1,12 +1,21 @@
 #pragma once
 #include "external.h"
 
-#define TINY_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 128) /* N: Size for tiny zones */
-/* Size of allocation zones - tuned for at least 100 allocations per zone */
-#define SMALL_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 220) /* M: Size for small zones */
+#ifndef FT_MALLOC_TINY_ZONE_SIZE
+#define FT_MALLOC_TINY_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 128) /* N: Size for tiny zones */
+#endif
 
-#define TINY_MAX_SIZE 128   /* n: max size for tiny allocations */
-#define SMALL_MAX_SIZE 1024 /* m: max size for small allocations */
+#ifndef FT_MALLOC_SMALL_ZONE_SIZE
+#define FT_MALLOC_SMALL_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 220) /* M: Size for small zones */
+#endif
+
+#ifndef FT_MALLOC_TINY_MAX_SIZE
+#define FT_MALLOC_TINY_MAX_SIZE 128   /* n: max size for tiny allocations */
+#endif
+
+#ifndef FT_MALLOC_SMALL_MAX_SIZE
+#define FT_MALLOC_SMALL_MAX_SIZE 1024 /* m: max size for small allocations */
+#endif
 
 #define MALLOC_ALIGNMENT sizeof(size_t) * 2
 #define MALLOC_ALIGN_MASK (MALLOC_ALIGNMENT - 1)

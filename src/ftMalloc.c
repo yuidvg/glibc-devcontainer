@@ -26,13 +26,13 @@ __attribute__((unused)) static bool defrag()
 /* The main memory allocation function */
 void *ftMalloc(const size_t reqSize) // todo: pattern 0
 {
-    if (reqSize <= SMALL_MAX_SIZE)
+    if (reqSize <= FT_MALLOC_SMALL_MAX_SIZE)
     {
         defrag();
         if (zones.tiny.base != NULL && zones.small.base != NULL) // check if the zones are initialized
         {
             const size_t needForPayload = alignUp(reqSize);
-            const Zone *const zone = reqSize <= (size_t)TINY_MAX_SIZE ? &zones.tiny : &zones.small;
+            const Zone *const zone = reqSize <= (size_t)FT_MALLOC_TINY_MAX_SIZE ? &zones.tiny : &zones.small;
             ChunkHeader *const exact = (ChunkHeader *const)findFreeChunk(needForPayload, zone);
             if (exact != NULL)
             {

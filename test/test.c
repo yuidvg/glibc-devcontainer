@@ -14,12 +14,12 @@
 #include <time.h>
 #include <unistd.h>
 
-#define TINY_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 128) /* N: Size for tiny zones */
+#define FT_MALLOC_TINY_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 128) /* N: Size for tiny zones */
 /* Size of allocation zones - tuned for at least 100 allocations per zone */
-#define SMALL_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 128) /* M: Size for small zones */
+#define FT_MALLOC_SMALL_ZONE_SIZE (sysconf(_SC_PAGESIZE) * 128) /* M: Size for small zones */
 
-#define TINY_MAX_SIZE 128   /* n: max size for tiny allocations */
-#define SMALL_MAX_SIZE 1024 /* m: max size for small allocations */
+#define FT_MALLOC_TINY_MAX_SIZE 128   /* n: max size for tiny allocations */
+#define FT_MALLOC_SMALL_MAX_SIZE 1024 /* m: max size for small allocations */
 
 #define MALLOC_ALIGNMENT sizeof(size_t) * 2
 #define MALLOC_ALIGN_MASK (MALLOC_ALIGNMENT - 1)
@@ -136,7 +136,7 @@ static MunitResult tiny_upper_bound(const MunitParameter params[], void *user_da
     // You should adjust this value based on your implementation's definitions
 
     // Allocate memory with the maximum TINY size
-    void *p = malloc(TINY_MAX_SIZE);
+    void *p = malloc(FT_MALLOC_TINY_MAX_SIZE);
     munit_assert_ptr_not_null(p);
 
     // Here, ideally we would check if this allocation is listed under TINY in show_alloc_mem
@@ -147,11 +147,11 @@ static MunitResult tiny_upper_bound(const MunitParameter params[], void *user_da
     char *char_p = (char *)p;
     // Write to the first and last byte
     char_p[0] = 'A';
-    char_p[TINY_MAX_SIZE - 1] = 'Z';
+    char_p[FT_MALLOC_TINY_MAX_SIZE - 1] = 'Z';
 
     // Verify the writes were successful
     munit_assert_char(char_p[0], ==, 'A');
-    munit_assert_char(char_p[TINY_MAX_SIZE - 1], ==, 'Z');
+    munit_assert_char(char_p[FT_MALLOC_TINY_MAX_SIZE - 1], ==, 'Z');
 
     // Clean up
     free(p);
@@ -166,10 +166,10 @@ static MunitResult small_lower_bound(const MunitParameter params[], void *user_d
     (void)user_data_or_fixture;
 
     // This test checks if an allocation just above the TINY boundary goes into SMALL zone
-    // Using the same TINY_MAX_SIZE from the previous test
-    const size_t SMALL_MIN_SIZE = TINY_MAX_SIZE + 1;
+    // Using the same FT_MALLOC_TINY_MAX_SIZE from the previous test
+    const size_t SMALL_MIN_SIZE = FT_MALLOC_TINY_MAX_SIZE + 1;
 
-    // Allocate memory of size TINY_MAX_SIZE + 1, which should be in SMALL zone
+    // Allocate memory of size FT_MALLOC_TINY_MAX_SIZE + 1, which should be in SMALL zone
     void *p = malloc(SMALL_MIN_SIZE);
     munit_assert_ptr_not_null(p);
 
@@ -197,9 +197,9 @@ static MunitResult large_allocation(const MunitParameter params[], void *user_da
     (void)params;
     (void)user_data_or_fixture;
 
-    // For this test, we assume SMALL_MAX_SIZE (where m = SMALL_MAX_SIZE)
+    // For this test, we assume FT_MALLOC_SMALL_MAX_SIZE (where m = FT_MALLOC_SMALL_MAX_SIZE)
     // Typically, large allocations might start around 128 KiB or similar
-    const size_t LARGE_MIN_SIZE = SMALL_MAX_SIZE + 1;
+    const size_t LARGE_MIN_SIZE = FT_MALLOC_SMALL_MAX_SIZE + 1;
 
     // Allocate memory just above the SMALL boundary, which should be in LARGE zone
     void *p = malloc(LARGE_MIN_SIZE);
@@ -574,22 +574,22 @@ static MunitResult large_to_small_migrate(const MunitParameter params[], void *u
     (void)params;
     (void)user_data_or_fixture;
 
-    // For this test, we assume SMALL_MAX_SIZE is defined
+    // For this test, we assume FT_MALLOC_SMALL_MAX_SIZE is defined
 
-    // Allocate in the LARGE zone (SMALL_MAX_SIZE + extra bytes)
-    const size_t large_size = SMALL_MAX_SIZE + 100;
+    // Allocate in the LARGE zone (FT_MALLOC_SMALL_MAX_SIZE + extra bytes)
+    const size_t large_size = FT_MALLOC_SMALL_MAX_SIZE + 100;
     void *p = malloc(large_size);
     munit_assert_ptr_not_null(p);
 
     // Add a recognizable pattern to the memory
     unsigned char *byte_p = (unsigned char *)p;
-    for (size_t i = 0; i < SMALL_MAX_SIZE; i++)
+    for (size_t i = 0; i < FT_MALLOC_SMALL_MAX_SIZE; i++)
     {
         byte_p[i] = (unsigned char)(i & 0xFF);
     }
 
     // Now reallocate to a size that should be in the SMALL zone
-    const size_t small_size = SMALL_MAX_SIZE; // Right at the boundary
+    const size_t small_size = FT_MALLOC_SMALL_MAX_SIZE; // Right at the boundary
     void *q = realloc(p, small_size);
     munit_assert_ptr_not_null(q);
 
@@ -618,7 +618,7 @@ static MunitResult at_least_100_allocs_per_zone(const MunitParameter params[], v
 
     // For this test, we use a relatively small allocation size to ensure
     // it fits in the TINY zone
-    const size_t alloc_size = TINY_MAX_SIZE - 1;
+    const size_t alloc_size = FT_MALLOC_TINY_MAX_SIZE - 1;
 
     // Array to store pointers for later freeing
     void *pointers[100];
@@ -682,7 +682,7 @@ static MunitResult page_multiple_mapping(const MunitParameter params[], void *us
     *(char *)tiny_ptr = 'T'; // Use briefly
 
     // Allocate in SMALL zone to potentially trigger zone mapping
-    void *small_ptr = malloc(TINY_MAX_SIZE + 1);
+    void *small_ptr = malloc(FT_MALLOC_TINY_MAX_SIZE + 1);
     munit_assert_ptr_not_null(small_ptr);
     *(char *)small_ptr = 'S'; // Use briefly
 
@@ -804,13 +804,13 @@ static MunitResult header_order(const MunitParameter params[], void *user_data_o
 
     // Make various allocations of different sizes to ensure we have entries in all zones
 
-    // TINY zone allocations (assuming TINY_MAX_SIZE is around 1024)
+    // TINY zone allocations (assuming FT_MALLOC_TINY_MAX_SIZE is around 1024)
     void *tiny1 = malloc(64);
     void *tiny2 = malloc(128);
     munit_assert_ptr_not_null(tiny1);
     munit_assert_ptr_not_null(tiny2);
 
-    // SMALL zone allocations (assuming SMALL_MAX_SIZE is around 128 KB)
+    // SMALL zone allocations (assuming FT_MALLOC_SMALL_MAX_SIZE is around 128 KB)
     void *small1 = malloc(8 * 1024);  // 8 KB
     void *small2 = malloc(32 * 1024); // 32 KB
     munit_assert_ptr_not_null(small1);
